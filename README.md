@@ -8,7 +8,7 @@ All tools are released as free and open-source software.
 
 ## Contents
 
-All scripts are located in the `Floops-tool/` directory.
+All scripts are located in the `floops-tool/` directory.
 
 Each tool is contained in its own folder and typically includes:
 - the script file (`.jsfx` or `.lua`)
