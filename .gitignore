@@ -1,0 +1,18 @@
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Temporary and backup files
+*.bak
+*.tmp
+*.old
+*~
+
+# ZIP archives generated locally
+*.zip
+
+# Optional local development folders
+dev/
+backup/
+experiments/
+studies/
