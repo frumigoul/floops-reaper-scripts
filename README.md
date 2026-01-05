@@ -1,2 +1,74 @@
-# floops-reaper-scripts
-A collection of JSFX and Lua scripts for REAPER, focused on audio processing and workflow enhancement.
+# Floop's REAPER Scripts
+
+This repository contains a collection of JSFX and Lua scripts for **REAPER**, focused on audio processing and workflow enhancement.
+
+All tools are released as free and open-source software.
+
+---
+
+## Contents
+
+All scripts are located in the `Floops-tool/` directory.
+
+Each tool is contained in its own folder and typically includes:
+- the script file (`.jsfx` or `.lua`)
+- a dedicated `README.md` with usage and details
+
+---
+
+## Installation
+
+### Manual Installation
+
+1. Download the repository  
+   - Clone the repository or download it as a ZIP file.
+
+2. Locate the REAPER resource path  
+   - Open REAPER  
+   - Go to **Options → Show REAPER resource path in explorer/finder**
+
+3. Install the scripts  
+   - **Lua scripts**:  
+     Copy the `.lua` files into the `Scripts` folder inside the REAPER resource path.
+   - **JSFX scripts**:  
+     Copy the `.jsfx` files into the `Effects` folder inside the REAPER resource path.
+
+4. Refresh REAPER  
+   - For Lua scripts:  
+     Open the **Actions List** (press `?`) and use  
+     **New Action → Load ReaScript...**
+   - For JSFX:  
+     Open the FX Browser and press **F5** to rescan effects.
+
+Refer to each tool’s README for specific instructions.
+
+---
+
+## Compatibility
+
+- **Operating System:**  
+  Primarily developed and tested on **Windows**.
+
+- **macOS / Linux:**  
+  Not personally tested. Feedback is welcome, but compatibility and stability are not guaranteed.
+
+---
+
+## Support and Expectations
+
+These scripts are provided **as-is**.
+
+- No guaranteed support is provided.
+- Issues and feedback are welcome, but responses may be limited.
+- Scripts are tested only on systems I have direct access to.
+
+This project is maintained in my spare time.
+
+---
+
+## License
+
+All scripts in this repository are released under the **GNU General Public License v3.0**.
+
+See the `LICENSE` file for full license details.
+
