@@ -1,9 +1,9 @@
 name: ReaPack index
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
   index:
@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run ReaPack index
-        uses: ReaTeam/ReaPack-Index@v1
+      - name: Run ReaPack Index
+        uses: ReaTeam/ReaPack-Index@main
 
       - name: Commit index.xml
         uses: stefanzweifel/git-auto-commit-action@v5
