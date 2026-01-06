@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="Floop's Reaper Scripts" commit="d44e5db2ab93b278550d2c272e15530420def679">
+  <category name="Effects">
+    <reapack name="Floop Chrominator" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
+      <metadata>
+        <description><![CDATA[Floop Chrominator
+Stereo Analog Saturator with five selectable modes (Soft, Even, Clip, Warm, Odd).
+Adds warmth, presence, and character from subtle color to heavier drive.
+
+Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T12:00:00Z">
+        <changelog><![CDATA[v1.1.0
+  + Bug fixes and improvements.
+  + Oversampling options: 1x, 2x, 4x with FIR anti-aliasing (HQ 17-tap).]]></changelog>
+        <source file="effects/Floop Chrominator/Floop Chrominator.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Chrominator/Floop%20Chrominator.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="Scripts">
+    <reapack name="Floop Studio Trainer" type="script" desc="Floop Studio Trainer">
+      <metadata>
+        <description><![CDATA[Floop Studio Trainer
+Practice your instrument inside Reaper using either an audio track or the metronome.
+Set repetitions and BPM increments to practice hands-free.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.1" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T12:00:00Z">
+        <source main="main" file="scripts/Floop Studio Trainer/Floop-Studio-Trainer.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
+      </version>
+    </reapack>
+  </category>
+</index>
