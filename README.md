@@ -18,6 +18,16 @@ Each tool is contained in its own folder and typically includes:
 
 ## Installation
 
+### Automatic Installation (Recommended via ReaPack)
+
+1. Open **ReaPack** inside REAPER.
+2. Go to **Extensions > ReaPack > Import Repositories...**
+3. Paste the following URL:
+   ```
+   https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
+   ```
+4. Double-click the newly added repository to browse and install the scripts.
+
 ### Manual Installation
 
 1. Download the repository  
