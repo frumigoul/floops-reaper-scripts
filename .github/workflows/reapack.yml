@@ -12,7 +12,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run reapack-index
         uses: cfillion/reapack-index@v1
         with:
