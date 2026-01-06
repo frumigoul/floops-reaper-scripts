@@ -13,10 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run reapack-index
-        uses: cfillion/reapack-index@v1
-        with:
-          version: 1.2.6
+      - name: Run ReaPack index
+        uses: ReaTeam/ReaPack-index@v1
 
       - name: Commit index.xml
         uses: stefanzweifel/git-auto-commit-action@v5
