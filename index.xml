@@ -49,5 +49,23 @@ Set repetitions and BPM increments to practice hands-free.]]></description>
         <source main="main" file="scripts/Floop Studio Trainer/Floop-Studio-Trainer.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
       </version>
     </reapack>
+    <reapack name="Floop Search" type="script" desc="Floop Search - Track Navigation System">
+      <metadata>
+        <description><![CDATA[Floop Search
+Track Navigation System.
+Provides a quick search bar for quick track navigation, selection, and previewing within REAPER.
+Features a floating, animated UI that expands when results are found.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T19:00:00Z">
+        <changelog><![CDATA[v1.0 (2026-01-06)
+  - Initial release
+  - Basic track search functionality
+  - Track selection and previewing
+  - Animated floating UI
+  - Debounced search for smooth performance]]></changelog>
+        <source main="main" file="scripts/Floop Search/Floop Search.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Search/Floop%20Search.lua</source>
+      </version>
+    </reapack>
   </category>
 </index>

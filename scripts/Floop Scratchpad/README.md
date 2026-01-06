@@ -27,7 +27,7 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 
 ## Requirements
 
-*   **REAPER v7.00** or later.
+*   **REAPER v7.5x** or later.
 *   **ReaImGui**: "ReaScript binding for Dear ImGui" installed via ReaPack. **Minimum version required: 0.10.2+**.
 *   **SWS/S&M Extension**: Required for automatic project startup refresh.
 
