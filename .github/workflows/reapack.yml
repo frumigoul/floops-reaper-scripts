@@ -1,0 +1,25 @@
+name: ReaPack index
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run reapack-index
+        uses: cfillion/reapack-index@v1
+        with:
+          version: 1.2.6
+
+      - name: Commit index.xml
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          file_pattern: index.xml
+          commit_message: "chore: update index.xml"
