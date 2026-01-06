@@ -1,4 +1,4 @@
-name: ReaPack index
+name: Generate ReaPack index
 
 on:
   workflow_dispatch:
@@ -10,14 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Run ReaPack Index
-        uses: ReaTeam/ReaPack-Index@main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install reapack-index
+        run: gem install reapack-index
+
+      - name: Generate index.xml
+        run: reapack-index --output index.xml .
 
       - name: Commit index.xml
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           file_pattern: index.xml
-          commit_message: "chore: update index.xml"
+          commit_message: "chore: generate ReaPack index"
