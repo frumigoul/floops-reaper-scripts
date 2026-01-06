@@ -1,0 +1,26 @@
+name: Reapack Index
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Generate index.xml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run reapack-index
+        uses: cfillion/reapack-index@v1
+        with:
+          version: 1.2.3
+          args: --about
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update index.xml"
+          file_pattern: index.xml
