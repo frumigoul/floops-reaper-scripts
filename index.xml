@@ -19,6 +19,25 @@ Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.]]></
     </reapack>
   </category>
   <category name="Scripts">
+    <reapack name="Floop Scratchpad" type="script" desc="Floop Scratchpad">
+      <metadata>
+        <description><![CDATA[Floop Scratchpad
+Track Notes System allows you to write, view, and manage notes for each track directly in REAPER.
+Notes are automatically loaded when switching tracks and saved in your project directory.
+The script dynamically generates a JSFX (FloopNoteReader) to visually display the notes on the track control panel.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.2.3" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T15:00:00Z">
+        <changelog><![CDATA[v1.2.3 (2026-01-06)
+  + Fixed: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
+  + Fixed: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
+  + Fixed: Race condition when switching project tabs.
+  + Improved: Added numeric value display next to the Font Scale slider.
+  + Internal: Improved project path detection using project pointers.]]></changelog>
+        <source main="main" file="scripts/Floop Scratchpad/Floop Scratchpad.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Scratchpad.lua</source>
+        <source main="main" file="scripts/Floop Scratchpad/Floop Startup Refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Startup%20Refresh.lua</source>
+      </version>
+    </reapack>
     <reapack name="Floop Studio Trainer" type="script" desc="Floop Studio Trainer">
       <metadata>
         <description><![CDATA[Floop Studio Trainer
