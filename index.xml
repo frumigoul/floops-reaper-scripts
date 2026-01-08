@@ -10,7 +10,7 @@ Adds warmth, presence, and character from subtle color to heavier drive.
 Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T12:00:00Z">
+      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-06T12:00:00Z">
         <changelog><![CDATA[v1.1.0
   + Bug fixes and improvements.
   + Oversampling options: 1x, 2x, 4x with FIR anti-aliasing (HQ 17-tap).]]></changelog>
@@ -31,7 +31,7 @@ Includes:
 Useful for metering and monitoring during mastering.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-08T12:00:00Z">
+      <version name="1.0.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
         <source file="Floop Master Control/Floop Master Control.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Master%20Control/Floop%20Master%20Control.jsfx</source>
       </version>
     </reapack>
@@ -50,7 +50,7 @@ Features:
 Suitable for mix bus, mastering, and drum processing.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-08T12:00:00Z">
+      <version name="1.0.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
         <source file="Floop Vert-ish/Verti-ish VCA Compressor.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Vert-ish/Verti-ish%20VCA%20Compressor.jsfx</source>
       </version>
     </reapack>
@@ -65,7 +65,7 @@ Detects and attenuates sibilance in vocal items by writing Volume envelope point
 Features multi-band analysis, adaptive thresholds, and ZCR.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-08T12:00:00Z">
+      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
         <changelog><![CDATA[v1.1.0
   - Added support for split clips and items not starting at 0.
   - Introduced interactive handles for manual segment adjustment.
@@ -85,7 +85,7 @@ Windows-only script.
 © 2025 2026 Flora Tarantino]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="2.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-08T12:00:00Z">
+      <version name="2.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
         <changelog><![CDATA[v2.1
   - Added About/Credits section with Poppler attribution.
   - Restored Clear Cache button.
@@ -105,7 +105,7 @@ Designed for live performance with automated track setup,
 smart auto-looping, and hands-free control.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-08T12:00:00Z">
+      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
         <changelog><![CDATA[v1.1
   - Idempotent 5-track creation.
   - Precise loop alignment with independent thresholds.
@@ -126,7 +126,7 @@ Notes are automatically loaded when switching tracks and saved in your project d
 The script dynamically generates a JSFX (FloopNoteReader) to visually display the notes on the track control panel.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.2.3" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T15:00:00Z">
+      <version name="1.2.3" author="Floop's Reaper Script" time="2026-01-06T15:00:00Z">
         <changelog><![CDATA[v1.2.3 (2026-01-06)
   + Fixed: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
   + Fixed: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
@@ -144,7 +144,7 @@ Practice your instrument inside Reaper using either an audio track or the metron
 Set repetitions and BPM increments to practice hands-free.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T12:00:00Z">
+      <version name="1.1" author="Floop's Reaper Script" time="2026-01-06T12:00:00Z">
         <source main="main" file="Floop Studio Trainer/Floop-Studio-Trainer.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
       </version>
     </reapack>
@@ -156,7 +156,7 @@ Provides a quick search bar for quick track navigation, selection, and previewin
 Features a floating, animated UI that expands when results are found.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T19:00:00Z">
+      <version name="1.0" author="Floop's Reaper Script" time="2026-01-06T19:00:00Z">
         <changelog><![CDATA[v1.0 (2026-01-06)
   - Initial release
   - Basic track search functionality
