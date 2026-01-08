@@ -2,11 +2,8 @@
 
 **Track Notes System for REAPER.**
 
-*   **Author**: © 2025-2026 Flora Tarantino (Floop's Reaper Script)
-*   **Version**: 1.2.3
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
 
-## Description
+## Overview
 
 **Floop Scratchpad** is a REAPER script that lets you write, view, and manage notes per track directly in your DAW.
 Notes are automatically saved and recalled when switching tracks, keeping project annotations organized and accessible.
@@ -18,7 +15,7 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 
 *   **Per-Track Notes**: Write and store notes tied to each track.
 *   **Auto-Load**: Notes load automatically when switching selected tracks.
-*   **JSFX Note Reader**: Dynamically generates `FloopNoteReader` to display notes in TCP/MCP.
+*   **JSFX Note Reader**: Dynamically generates **FloopNoteReader.jsfx** to display notes in TCP/MCP.
 *   **Autosave**: Avoids losing edits when switching tracks.
 *   **Duplicate-Safe**: Prevents multiple JSFX instances on the same track.
 *   **Compact UI**: Rounded sliders, white grab, flicker-free font scaling.
@@ -33,22 +30,49 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 
 ## Compatibility
 
-*   **REAPER**: Developed and tested on **v7.0+** (Windows).
+*   **REAPER**: Developed and tested on **v7.5x+** (Windows).
 *   **Operating Systems**:
     *   **Windows**: Fully tested and supported.
     *   **macOS / Linux**: Designed with cross-platform compatibility in mind (using system-agnostic path handling), but not personally tested on these systems. Feedback is welcome!
 
 ## Installation
 
-1.  **Install ReaImGui & SWS**:
-    *   Go to **Extensions > ReaPack > Browse Packages**.
-    *   Install `ReaImGui` and `SWS/S&M`.
-    *   Restart REAPER.
+The easiest way to install and keep the script updated is via **ReaPack**.
+
+### Method 1: ReaPack (Recommended)
+
+1.  **Install Prerequisites**:
+    *   Open **Extensions > ReaPack > Browse Packages**.
+    *   Search for and install:
+        *   `ReaScript binding for Dear ImGui`
+        *   `SWS/S&M Extension`
+    *   **Restart REAPER**.
+
+2.  **Add the Repository**:
+    *   Open **Extensions > ReaPack > Import Repositories...**
+    *   Copy and paste this URL:
+        https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
+    *   Click **OK**.
+
+3.  **Install the Script**:
+    *   Open **Extensions > ReaPack > Browse Packages**.
+    *   Search for `Floop Scratchpad`.
+    *   Right-click > **Install**.
+    *   Click **Apply**.
+
+### Method 2: Manual Installation
+
+1.  **Install Prerequisites**:
+    *   Follow step 1 from the ReaPack method above to install `ReaImGui` and `SWS`.
+
 2.  **Install the Script**:
-    *   Copy `Floop Scratchpad.lua` and `Floop Startup Refresh.lua` to your REAPER Scripts folder.
+    *   Download the script files.
+    *   Copy `Floop Scratchpad.lua` and `Floop Startup Refresh.lua` to your REAPER Scripts folder (usually `AppData\Roaming\REAPER\Scripts` on Windows).
+
 3.  **Load the Action**:
-    *   Open Actions List (`?`).
-    *   Load `Floop Scratchpad.lua`.
+    *   Open the Actions List (`?` shortcut).
+    *   Click **New Action > Load ReaScript...**
+    *   Select `Floop Scratchpad.lua`.
 
 ## Usage
 
@@ -56,11 +80,13 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 2.  **Select a track**: Its name and GUID appear in the interface.
 3.  **Type notes** and click "Save".
 4.  **Switch tracks** to see notes update automatically.
-5.  **Embed Notes**:
-    *   Click "Add JSFX".
-    *   In FX Browser, find `FloopNoteReader`.
-    *   Right-click > "Default settings for new instance" > Enable "Show embedded UI in TCP or MCP".
-    *   Future instances will auto-embed.
+
+### Embedding Notes in TCP / MCP
+
+   *   Click "Add JSFX".
+   *   In FX Browser, find `FloopNoteReader`.
+   *   Right-click > "Default settings for new instance" > Enable "Show embedded UI in TCP or MCP".
+   *   Future instances will auto-embed.
 
 ## Troubleshooting
 
@@ -69,7 +95,7 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 
 ## Changelog
 
-### v1.2.3 (2026-01-06)
+### v1.2.3 (2026-01-08)
 *   **Fixed**: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
 *   **Fixed**: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
 *   **Fixed**: Race condition when switching project tabs.
@@ -105,12 +131,12 @@ The script generates a companion JSFX (FloopNoteReader) that displays your notes
 *   **Added**: Prevention of duplicate JSFX instances on the same track.
 *   **Fixed**: Slider flicker removed by refreshing after edit ends.
 
-## Support
+## Author
 
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
-*   **Instagram**: [@fdlightproject](https://www.instagram.com/fdlightproject/)
+Developed by **Flora Tarantino**  
+Project home: https://www.floratarantino.com
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+Licensed under the **GNU General Public License v3.0 (GPL-3.0)**  
 See the `LICENSE.txt` file in the main repository for details.

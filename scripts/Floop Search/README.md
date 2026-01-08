@@ -2,11 +2,9 @@
 
 **Track Navigation System for REAPER.**
 
-*   **Author**: © 2026 Flora Tarantino (Floop's Reaper Script)      
-*   **Version**: 1.0
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
 
-## Description
+
+## Overview
 
 **Floop Search** is a Lua script for REAPER that brings a search bar for rapid track navigation, selection, and previewing.
 It features a sleek, floating, animated interface that stays out of your way until you need it.
@@ -25,17 +23,41 @@ Designed for speed and keyboard-centric workflows, it allows you to find any tra
 ## Requirements
 
 *   **REAPER v7.5x** or later.
-*   **ReaImGui**: Installed via ReaPack.
+*   **ReaImGui**: "ReaScript binding for Dear ImGui" installed via ReaPack. **Minimum version required: 0.10.2+**.
 
 ## Compatibility
 
-*   **Windows**: Fully supported (Tested).
-*   **macOS**: Fully supported (Standard ReaImGui/Lua).
-*   **Linux**: Fully supported (Standard ReaImGui/Lua).
-
-> **Note**: This script relies on **ReaImGui**, which is cross-platform. As long as ReaImGui is installed and working on your system, this script will function correctly.
+*   **REAPER**: Developed and tested on **v7.5x+** (Windows).
+*   **Operating Systems**:
+    *   **Windows**: Fully tested and supported.
+    *   **macOS / Linux**: Designed with cross-platform compatibility in mind, but not personally tested on these systems. Feedback is welcome!
 
 ## Installation
+
+The easiest way to install and keep the script updated is via **ReaPack**.
+
+### Method 1: ReaPack (Recommended)
+
+1.  **Install Prerequisites**:
+    *   Open **Extensions > ReaPack > Browse Packages**.
+    *   Search for and install:
+        *   `ReaScript binding for Dear ImGui`
+        *   `SWS/S&M Extension`
+    *   **Restart REAPER**.
+
+2.  **Add the Repository**:
+    *   Open **Extensions > ReaPack > Import Repositories...**
+    *   Copy and paste this URL:
+        https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
+    *   Click **OK**.
+
+3.  **Install the Script**:
+    *   Open **Extensions > ReaPack > Browse Packages**.
+    *   Search for `Floop Search`.
+    *   Right-click > **Install**.
+    *   Click **Apply**.
+
+### Method 2: Manual Installation
 
 1.  **Install ReaImGui**:
     *   Go to **Extensions > ReaPack > Browse Packages**.
@@ -77,11 +99,12 @@ Designed for speed and keyboard-centric workflows, it allows you to find any tra
 *   Debounced search for smooth performance.
 
 
-## Support
+## Author
 
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
-*   **Instagram**: [@fdlightproject](https://www.instagram.com/fdlightproject/)
+Developed by **Flora Tarantino**  
+Project home: https://www.floratarantino.com
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+Licensed under the **GNU General Public License v3.0 (GPL-3.0)**  
+See the `LICENSE.txt` file in the main repository for details.

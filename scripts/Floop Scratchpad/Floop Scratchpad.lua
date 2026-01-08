@@ -1,29 +1,28 @@
--- @description Floop Scratchpad
+-- Floop Scratchpad - Per-track notes system for REAPER.
 -- @version 1.2.3
--- @author Flora Tarantino (Floop's Reaper Script)
--- @website https://www.floratarantino.com
--- @license GPL v3
+-- @author Flora Tarantino
+-- @license GPL-3.0
 -- @changelog
---   + Fixed: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
---   + Fixed: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
+--   + Fixed: Notes lost when saving a previously unsaved project.
+--   + Fixed: JSFX reader disappearing on font scale changes.
 --   + Fixed: Race condition when switching project tabs.
---   + Improved: Added numeric value display next to the Font Scale slider.
---   + Internal: Improved project path detection using project pointers.
+--   + Improved: Numeric display for Font Scale slider.
+--   + Internal: Improved project path detection.
 -- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about
---   # Floop Scratchpad
---   © 2025-2026 Flora Tarantino
+--   Per-track notes system for REAPER.
 --
---   Track Notes System allows you to write, view, and manage notes for each track directly in REAPER.
---   Notes are automatically loaded when switching tracks and saved in your project directory.
---   The script dynamically generates a JSFX (FloopNoteReader) to visually display the notes on the track control panel.
+--   Allows writing, viewing, and managing notes for each track.
+--   Notes are automatically saved and recalled when switching tracks.
 --
--- @tags notes, track, scratchpad, text, jsfx, management
+--   Dynamically generates a companion JSFX (FloopNoteReader)
+--   to display notes in the Track Control Panel.
+--
+--   Keywords: notes, track, text, workflow.
 -- @provides
---   [main] .
+--   [main] Floop Scratchpad.lua
 --   [main] Floop Startup Refresh.lua
---
 
 
 local reaper = reaper

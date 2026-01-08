@@ -1,27 +1,21 @@
--- @description Floop Search - Track Navigation System
--- @version 1.0
--- @author Flora Tarantino (Floop's Reaper Script)
--- @website https://www.floratarantino.com
--- @license GPL v3
+-- Floop Search - Track Navigation System
+-- @version 1.0.0
+-- @author Flora Tarantino
+-- @license GPL-3.0
 -- @changelog
---   v1.0 (2026-01-06)
---     - Initial release
---     - Basic track search functionality
---     - Track selection and previewing
---     - Animated floating UI
---     - Debounced search for smooth performance
---
+--   Initial release.
+--   Track search, selection, and previewing.
+--   Animated floating UI with debounced search.
 -- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @about
---   # Floop Search
---   © 2026 Flora Tarantino
+--   Fast track navigation and search tool for REAPER.
 --
---   Floop Search is a Lua script that provides a quick search bar
---   for quick track navigation, selection, and previewing within REAPER.
---   It features a floating, animated UI that expands when results are found.
+--   Provides a floating search bar for quickly locating,
+--   selecting, and previewing tracks.
 --
--- @tags search, navigation, track, fast, workflow
--- @provides [main] .
+--   Keywords: search, navigation, track, workflow.
+-- @provides
+--   [main] Floop Search.lua
 
 local r = reaper
 

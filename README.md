@@ -1,76 +1,87 @@
-# Floop's REAPER Scripts
+# Floop’s REAPER Scripts
 
-This repository contains a collection of JSFX and Lua scripts for **REAPER**, focused on audio processing and workflow enhancement.
+This repository contains a collection of **JSFX effects** and **Lua scripts** for
+**REAPER**, focused on audio processing, monitoring, and workflow enhancement.
 
-All tools are released as free and open-source software.
+All tools are released as **free and open-source software**.
 
 ---
 
-## Contents
+## Repository Structure
 
-All scripts are located in the `floops-tool/` directory.
+The tools are organized into the following directories:
+- `scripts/`: Lua scripts
+- `effects/`: JSFX effects
 
 Each tool is contained in its own folder and typically includes:
-- the script file (`.jsfx` or `.lua`)
-- a dedicated `README.md` with usage and details
+- the script or effect file (`.lua` or `.jsfx`)
+- a dedicated `README.md` with usage instructions and details
+
+This structure allows the repository to be used both:
+- via **ReaPack**
+- and by manually downloading individual tools from GitHub
 
 ---
 
 ## Installation
 
-### Automatic Installation (Recommended via ReaPack)
+### Automatic Installation (Recommended – ReaPack)
 
-1. Open **ReaPack** inside REAPER.
-2. Go to **Extensions > ReaPack > Import Repositories...**
+1. Open **REAPER**
+2. Go to **Extensions → ReaPack → Import Repositories…**
 3. Paste the following URL:
-   ```
-   https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
-   ```
-4. Double-click the newly added repository to browse and install the scripts.
+
+`https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml`
+
+4. The repository will appear in ReaPack.
+Browse and install scripts or effects as needed.
+
+---
 
 ### Manual Installation
 
-1. Download the repository  
-   - Clone the repository or download it as a ZIP file.
+1. Download the repository
+- Clone it with Git or download it as a ZIP file.
 
-2. Locate the REAPER resource path  
-   - Open REAPER  
-   - Go to **Options → Show REAPER resource path in explorer/finder**
+2. Locate the REAPER resource path
+- In REAPER, go to
+  **Options → Show REAPER resource path in explorer / finder**
 
-3. Install the scripts  
-   - **Lua scripts**:  
-     Copy the `.lua` files into the `Scripts` folder inside the REAPER resource path.
-   - **JSFX scripts**:  
-     Copy the `.jsfx` files into the `Effects` folder inside the REAPER resource path.
+3. Install the files
+- **Lua scripts**:
+  Copy `.lua` files into the `Scripts` folder.
+- **JSFX effects**:
+  Copy `.jsfx` files into the `Effects` folder.
 
-4. Refresh REAPER  
-   - For Lua scripts:  
-     Open the **Actions List** (press `?`) and use  
-     **New Action → Load ReaScript...**
-   - For JSFX:  
-     Open the FX Browser and press **F5** to rescan effects.
+4. Refresh REAPER
+- **Lua scripts**:
+  Open the **Actions List** (`?`) →
+  **New Action → Load ReaScript…**
+- **JSFX effects**:
+  Open the FX Browser and press **F5** to rescan effects.
 
-Refer to each tool’s README for specific instructions.
+Refer to each tool’s own `README.md` for specific usage instructions and requirements.
 
 ---
 
 ## Compatibility
 
-- **Operating System:**  
-  Primarily developed and tested on **Windows**.
+- **Primary platform:**
+Developed and tested on **Windows**.
 
-- **macOS / Linux:**  
-  Not personally tested. Feedback is welcome, but compatibility and stability are not guaranteed.
+- **macOS / Linux:**
+Some scripts are designed to be cross-platform, but not all tools are tested on these systems. Compatibility and stability are not guaranteed.
+Feedback is welcome.
 
 ---
 
-## Support and Expectations
+## Support & Expectations
 
-These scripts are provided **as-is**.
+All scripts and effects are provided **as-is**.
 
 - No guaranteed support is provided.
-- Issues and feedback are welcome, but responses may be limited.
-- Scripts are tested only on systems I have direct access to.
+- Bug reports and feedback are welcome, but responses may be limited.
+- Tools are tested only on systems I have direct access to.
 
 This project is maintained in my spare time.
 
@@ -78,7 +89,7 @@ This project is maintained in my spare time.
 
 ## License
 
-All scripts in this repository are released under the **GNU General Public License v3.0**.
+All contents of this repository are released under the
+**GNU General Public License v3.0 (GPL-3.0)**.
 
 See the `LICENSE` file for full license details.
-

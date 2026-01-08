@@ -2,11 +2,8 @@
 
 **Stereo Analog Saturator for Reaper.**
 
-*   **Author**: © 2025-2026 Flora Tarantino (Floop's Reaper Script)
-*   **Version**: 1.1.0
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
 
-## Description
+## Overview
 
 **Floop Chrominator** is a JSFX effect for REAPER that emulates stereo "analog" saturation with five selectable modes (Soft, Even, Clip, Warm, Odd). It adds warmth, presence, and character to tracks and buses, from subtle color to heavier drive, featuring oversampling, filters, tilt EQ, auto‑gain, and smooth parameter transitions.
 
@@ -24,10 +21,27 @@
 ## Requirements
 
 *   **REAPER v7.00** or later.
-*   Tested on Windows 10/11 and Linux (Pop!_OS).
-*   Should work on macOS (standard JSFX code), but not explicitly tested.
+*   Tested on Windows 10/11.
 
 ## Installation
+The easiest way to install and keep the script updated is via **ReaPack**.
+
+### Method 1: ReaPack (Recommended)
+
+
+1.  **Add the Repository to ReaPack**:
+    *   Open **Extensions > ReaPack > Import Repositories...**
+    *   Copy and paste this URL:
+        https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
+    *   Click **OK**.
+
+3.  **Install the Script**:
+    *   Open **Extensions > ReaPack > Browse Packages**.
+    *   Search for `Floop Chrominator`.
+    *   Right-click > **Install**.
+    *   Click **Apply**.
+
+### Method 2: Manual Installation
 
 1.  **Open REAPER**.
 2.  Go to **Options > Show REAPER resource path...**.
@@ -65,19 +79,19 @@
 
 ### v1.1.0
 
-*   Bug fixes and improvements.
+*   Bag fixes and improvements.
 *   Oversampling options: 1x, 2x, 4x with FIR anti-aliasing (HQ 17-tap).
 
 ### v1.0.0
 * Initial release.
 * Current release with scalable UI and 5 saturation modes.
 
-## Support
+## Author
 
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
-*   **Instagram**: [@fdlightproject](https://www.instagram.com/fdlightproject/)
+Developed by **Flora Tarantino**  
+Project home: https://www.floratarantino.com
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
-See the `LICENSE` file in the main repository for details.
+Licensed under the **GNU General Public License v3.0 (GPL-3.0)**  
+See the `LICENSE.txt` file in the main repository for details.
