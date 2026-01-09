@@ -1,6 +1,6 @@
 -- Floop Ess Hunter Taming hiss in a single pass.
 -- @version 1.1.0
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @changelog

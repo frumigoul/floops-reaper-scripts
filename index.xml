@@ -4,17 +4,20 @@
     <reapack name="Floop Chrominator" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
         <description><![CDATA[Floop Chrominator
-Stereo Analog Saturator with five selectable modes (Soft, Even, Clip, Warm, Odd).
-Adds warmth, presence, and character from subtle color to heavier drive.
+Stereo analog saturator with five selectable modes:
+Soft, Even, Clip, Warm, and Odd.
 
-Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.]]></description>
+Adds warmth, presence, and character from subtle color
+to heavier drive.
+
+Features oversampling, filters, tilt EQ, auto-gain,
+and smooth transitions.
+
+Keywords: saturation, analog, drive, distortion, stereo.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-06T12:00:00Z">
-        <changelog><![CDATA[v1.1.0
-  + Bug fixes and improvements.
-  + Oversampling options: 1x, 2x, 4x with FIR anti-aliasing (HQ 17-tap).]]></changelog>
-        <source file="Floop Chrominator/Floop Chrominator.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Chrominator/Floop%20Chrominator.jsfx</source>
+      <version name="1.1.0" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <source file="effects/Floop Chrominator/Floop Chrominator.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Chrominator/Floop%20Chrominator.jsfx</source>
       </version>
     </reapack>
     <reapack name="Floop Master Control" type="effect" desc="Floop Master Control">
@@ -28,11 +31,12 @@ Includes:
 - Spectrum analysis
 - Phase correlation view
 
-Useful for metering and monitoring during mastering.]]></description>
+Useful for metering and monitoring during mastering.
+Keywords: LUFS, spectrum, phase, true peak, monitoring.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
-        <source file="Floop Master Control/Floop Master Control.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Master%20Control/Floop%20Master%20Control.jsfx</source>
+      <version name="1.0.0" author="floop-s" time="2026-01-09T10:00:00Z">
+        <source file="effects/Floop Master Control/Floop Master Control.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Master%20Control/Floop%20Master%20Control.jsfx</source>
       </version>
     </reapack>
     <reapack name="Verti-ish VCA Compressor" type="effect" desc="Verti-ish VCA Compressor">
@@ -47,123 +51,139 @@ Features:
 - Stereo and dual-mono modes
 - Sidechain filters and harmonic saturation
 
-Suitable for mix bus, mastering, and drum processing.]]></description>
+Suitable for mix bus, mastering, and drum processing.
+Keywords: compressor, VCA, dynamics, stereo, saturation.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
-        <source file="Floop Vert-ish/Verti-ish VCA Compressor.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Vert-ish/Verti-ish%20VCA%20Compressor.jsfx</source>
+      <version name="1.0.0" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <source file="effects/Floop Vert-ish/Verti-ish VCA Compressor.jsfx">https://github.com/floop-s/floops-reaper-scripts/raw/main/effects/Floop%20Vert-ish/Verti-ish%20VCA%20Compressor.jsfx</source>
       </version>
     </reapack>
   </category>
   <category name="Scripts">
-    <reapack name="Floop Ess Hunter" type="script" desc="Floop Ess Hunter">
+    <reapack name="Floop Ess Hunter" type="script" desc="Floop Ess Hunter Taming hiss in a single pass.">
       <metadata>
         <description><![CDATA[Floop Ess Hunter
-Taming hiss in a single pass.
+Taming hiss.
 
 Detects and attenuates sibilance in vocal items by writing Volume envelope points.
-Features multi-band analysis, adaptive thresholds, and ZCR.]]></description>
+Features multi-band analysis, adaptive thresholds, and ZCR.
+
+For full documentation and changelog, please refer to the README file.
+keywords vocal, de-esser, envelope, processing, analysis]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
+      <version name="1.1.0" author="Floop-s" time="2026-01-09T10:00:00Z">
         <changelog><![CDATA[v1.1.0
-  - Added support for split clips and items not starting at 0.
-  - Introduced interactive handles for manual segment adjustment.
-  - Added per-segment volume control via vertical drag.
-  - Fixed waveform display alignment for offset items.
-  - "Analyze and Apply" now correctly handles item offsets and playrates.
-  - "Close" button in title bar now matches standard close behavior.]]></changelog>
-        <source main="main" file="Floop Ess Hunter/Floop Ess Hunter.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Ess%20Hunter/Floop%20Ess%20Hunter.lua</source>
+- Added support for split clips and items not starting at 0.
+- Introduced interactive handles for manual segment adjustment.
+- Added per-segment volume control via vertical drag.
+- Fixed waveform display alignment for offset items.
+- "Analyze and Apply" now correctly handles item offsets and playrates.
+- "Close" button in title bar now matches standard close behavior.]]></changelog>
+        <source main="main" file="scripts/Floop Ess Hunter/Floop Ess Hunter.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Ess%20Hunter/Floop%20Ess%20Hunter.lua</source>
+      </version>
+    </reapack>
+    <reapack name="Floop Scratchpad" type="script" desc="Floop Scratchpad - Per-track notes system for REAPER.">
+      <metadata>
+        <description><![CDATA[Per-track notes system for REAPER.
+
+Allows writing, viewing, and managing notes for each track.
+Notes are automatically saved and recalled when switching tracks.
+
+Dynamically generates a companion JSFX (FloopNoteReader)
+to display notes in the Track Control Panel.
+
+Keywords: notes, track, text, workflow.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.2.3" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <changelog><![CDATA[+ Fixed: Notes lost when saving a previously unsaved project.
++ Fixed: JSFX reader disappearing on font scale changes.
++ Fixed: Race condition when switching project tabs.
++ Improved: Numeric display for Font Scale slider.
++ Internal: Improved project path detection.]]></changelog>
+        <source main="main" file="scripts/Floop Scratchpad/Floop Scratchpad.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Scratchpad.lua</source>
+        <source main="main" file="scripts/Floop Scratchpad/Floop Startup Refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Startup%20Refresh.lua</source>
+      </version>
+    </reapack>
+    <reapack name="Floop Search" type="script" desc="Floop Search - Track Navigation System">
+      <metadata>
+        <description><![CDATA[Fast track navigation and search tool for REAPER.
+
+Provides a floating search bar for quickly locating,
+selecting, and previewing tracks.
+
+Keywords: search, navigation, track, workflow.]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.0.0" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <changelog><![CDATA[Initial release.
+Track search, selection, and previewing.
+Animated floating UI with debounced search.]]></changelog>
+        <source main="main" file="scripts/Floop Search/Floop Search.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Search/Floop%20Search.lua</source>
       </version>
     </reapack>
     <reapack name="Floop Sheet Reader" type="script" desc="Floop Sheet Reader - PDF and Image Viewer">
       <metadata>
-        <description><![CDATA[Floop Sheet Reader - PDF and Image Viewer
-Windows-only script.
+        <description><![CDATA[Windows-only script.
 
 # Sheet Reader v2.0
-© 2025 2026 Flora Tarantino]]></description>
-        <link rel="website">https://www.floratarantino.com</link>
-      </metadata>
-      <version name="2.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
-        <changelog><![CDATA[v2.1
-  - Added About/Credits section with Poppler attribution.
-  - Restored Clear Cache button.
-  - Fixed tooltip contrast.
-v2.0
-  - Cache manager and stability improvements.
-  - Added Poppler integrity check.]]></changelog>
-        <source main="main" file="Floop Sheet Reader-PDF and Image Viewer/Floop Sheet Reader.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Sheet%20Reader-PDF%20and%20Image%20Viewer/Floop%20Sheet%20Reader.lua</source>
-      </version>
-    </reapack>
-    <reapack name="Floopa Station" type="script" desc="Floopa Station">
-      <metadata>
-        <description><![CDATA[Floopa Station
-Five-track live looping station for REAPER.
+© 2025 2026 Floop-s
 
-Designed for live performance with automated track setup,
-smart auto-looping, and hands-free control.]]></description>
+Load and view PDF and image files directly inside Reaper.
+Uses Poppler for PDF-to-image conversion.
+First, the script checks if "pdftoppm" is installed. If not, it prompts the user  
+to install Poppler automatically. Poppler is downloaded from the official release  
+page and extracted to the Reaper resource folder:  
+https://github.com/oschwartz10612/poppler-windows/releases/download/v25.12.0-0/Release-25.12.0-0.zip
+Once installed, the script converts PDF pages into images and displays them in the GUI.  
+
+ keywords: sheet, pdf, image, viewer, score, music]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Floop's Reaper Script" time="2026-01-08T12:00:00Z">
-        <changelog><![CDATA[v1.1
-  - Idempotent 5-track creation.
-  - Precise loop alignment with independent thresholds.
-  - Robust setup/revert with full settings restore.
-  - GUID-based MIDI control track management.
-  - Docking support enabled.
-v1.0
-  - Initial release.]]></changelog>
-        <source main="main" file="Floopa Station/Floopa Station.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floopa%20Station/Floopa%20Station.lua</source>
-        <source file="Floopa Station/modules/midi_map.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floopa%20Station/modules/midi_map.lua</source>
-      </version>
-    </reapack>
-    <reapack name="Floop Scratchpad" type="script" desc="Floop Scratchpad">
-      <metadata>
-        <description><![CDATA[Floop Scratchpad
-Track Notes System allows you to write, view, and manage notes for each track directly in REAPER.
-Notes are automatically loaded when switching tracks and saved in your project directory.
-The script dynamically generates a JSFX (FloopNoteReader) to visually display the notes on the track control panel.]]></description>
-        <link rel="website">https://www.floratarantino.com</link>
-      </metadata>
-      <version name="1.2.3" author="Floop's Reaper Script" time="2026-01-06T15:00:00Z">
-        <changelog><![CDATA[v1.2.3 (2026-01-06)
-  + Fixed: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
-  + Fixed: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
-  + Fixed: Race condition when switching project tabs.
-  + Improved: Added numeric value display next to the Font Scale slider.
-  + Internal: Improved project path detection using project pointers.]]></changelog>
-        <source main="main" file="Floop Scratchpad/Floop Scratchpad.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Scratchpad.lua</source>
-        <source main="main" file="Floop Scratchpad/Floop Startup Refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Scratchpad/Floop%20Startup%20Refresh.lua</source>
+      <version name="2.1.0" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <changelog><![CDATA[v2.1
+- Added About/Credits section with Poppler attribution.
+- Restored Clear Cache button.
+- Fixed tooltip contrast.]]></changelog>
+        <source main="main" file="scripts/Floop Sheet Reader-PDF and Image Viewer/Floop Sheet Reader.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Sheet%20Reader-PDF%20and%20Image%20Viewer/Floop%20Sheet%20Reader.lua</source>
       </version>
     </reapack>
     <reapack name="Floop Studio Trainer" type="script" desc="Floop Studio Trainer">
       <metadata>
         <description><![CDATA[Floop Studio Trainer
+© 2025-2026 Floop-s
+
 Practice your instrument inside Reaper using either an audio track or the metronome.
-Set repetitions and BPM increments to practice hands-free.]]></description>
+Set repetitions and BPM increments to practice hands-free.
+
+Keywords: practice, loop, trainer, bpm, metronome]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1" author="Floop's Reaper Script" time="2026-01-06T12:00:00Z">
-        <source main="main" file="Floop Studio Trainer/Floop-Studio-Trainer.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
+      <version name="1.1" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <source main="main" file="scripts/Floop Studio Trainer/Floop-Studio-Trainer.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
       </version>
     </reapack>
-    <reapack name="Floop Search" type="script" desc="Floop Search - Track Navigation System">
+    <reapack name="Floopa Station" type="script" desc="Floopa Station">
       <metadata>
-        <description><![CDATA[Floop Search
-Track Navigation System.
-Provides a quick search bar for quick track navigation, selection, and previewing within REAPER.
-Features a floating, animated UI that expands when results are found.]]></description>
+        <description><![CDATA[Five-track live looping station for REAPER.
+
+Designed for live performance with automated track setup,
+smart auto-looping, and hands-free control.
+
+Keywords: looper, live performance, recording, workflow.]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0" author="Floop's Reaper Script" time="2026-01-06T19:00:00Z">
-        <changelog><![CDATA[v1.0 (2026-01-06)
-  - Initial release
-  - Basic track search functionality
-  - Track selection and previewing
-  - Animated floating UI
-  - Debounced search for smooth performance]]></changelog>
-        <source main="main" file="Floop Search/Floop Search.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floop%20Search/Floop%20Search.lua</source>
+      <version name="1.1.0" author="Floop-s" time="2026-01-09T10:00:00Z">
+        <changelog><![CDATA[v1.1
+- Idempotent 5-track creation.
+- Precise loop alignment with independent thresholds.
+- Robust setup/revert with full settings restore.
+- GUID-based MIDI control track management.
+- Docking support enabled.]]></changelog>
+        <source main="main" file="scripts/Floopa Station/Floopa Station.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floopa%20Station/Floopa%20Station.lua</source>
+        <source file="scripts/Floopa Station/modules/midi_map.lua">https://github.com/floop-s/floops-reaper-scripts/raw/main/scripts/Floopa%20Station/modules/midi_map.lua</source>
       </version>
     </reapack>
   </category>

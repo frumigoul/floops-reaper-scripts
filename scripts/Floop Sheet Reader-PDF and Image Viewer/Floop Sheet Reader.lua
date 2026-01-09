@@ -1,22 +1,19 @@
 -- Floop Sheet Reader - PDF and Image Viewer
 -- @version 2.1.0
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
 --   v2.1
 --   - Added About/Credits section with Poppler attribution.
 --   - Restored Clear Cache button.
 --   - Fixed tooltip contrast.
---   v2.0
---   - Cache manager and stability improvements.
---   - Added Poppler integrity check.
 -- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about
 --   Windows-only script.
 --
 --   # Sheet Reader v2.0
---   © 2025 2026 Flora Tarantino
+--   © 2025 2026 Floop-s
 --
 --   Load and view PDF and image files directly inside Reaper.
 --   Uses Poppler for PDF-to-image conversion.

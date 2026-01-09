@@ -1,6 +1,6 @@
 -- Floop Search - Track Navigation System
 -- @version 1.0.0
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
 --   Initial release.

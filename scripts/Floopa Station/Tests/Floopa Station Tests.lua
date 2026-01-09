@@ -1,3 +1,5 @@
+-- @noindex
+-- @description Floopa Station Tests
 _G.__FLOOPA_NO_GUI__ = true
 
 local scriptPath = debug.getinfo(1, 'S').source:match('^@(.+)$')

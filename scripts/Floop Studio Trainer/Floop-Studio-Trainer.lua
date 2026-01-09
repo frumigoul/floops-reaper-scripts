@@ -1,17 +1,17 @@
 -- Floop Studio Trainer
 -- @version 1.1
--- @author Flora Tarantino (Floop's Reaper Script)
+-- @author Floop-s
 -- @license GPL v3.0
--- @dependency reaImGui https://raw.githubusercontent.com/ReaTeam/Extensions/master/index.xml
+-- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @about
 --    Floop Studio Trainer
---   © 2025-2026 Flora Tarantino
+--   © 2025-2026 Floop-s
 --
 --   Practice your instrument inside Reaper using either an audio track or the metronome.
 --   Set repetitions and BPM increments to practice hands-free.
 --
 --  Keywords: practice, loop, trainer, bpm, metronome
--- @provides [main] Floop Studio Trainer.lua
+-- @provides [main] Floop-Studio-Trainer.lua
 
 
 

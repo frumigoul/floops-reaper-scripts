@@ -1,6 +1,9 @@
--- Floop Startup Refresh
--- VERSION: 1.2.3
--- DATE: 06-01-2026
+-- @description Floop Startup Refresh
+-- @version 1.2.3
+-- @author Floop-s
+-- @date 06-01-2026
+-- @noindex
+
 
 -- Purpose: Project startup helper to refresh JSFX note readers per track
 -- It reads the project notes file, re-writes the single JSFX file with the

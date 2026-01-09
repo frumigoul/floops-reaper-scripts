@@ -1,6 +1,6 @@
 -- Floop Scratchpad - Per-track notes system for REAPER.
 -- @version 1.2.3
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
 --   + Fixed: Notes lost when saving a previously unsaved project.

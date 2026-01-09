@@ -1,5 +1,5 @@
 -- @version 1.1.0
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
 --   v1.1
@@ -8,8 +8,6 @@
 --   - Robust setup/revert with full settings restore.
 --   - GUID-based MIDI control track management.
 --   - Docking support enabled.
---   v1.0
---   - Initial release.
 -- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about

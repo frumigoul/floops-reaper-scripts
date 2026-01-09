@@ -1,6 +1,6 @@
 -- @noindex
 -- Floopa MIDI Map - Internal module
--- @author Flora Tarantino
+-- @author Floop-s
 -- @license GPL-3.0
 -- MIDI Map module (shared by Floopa Station modal and standalone wrapper)
 local M = {}
