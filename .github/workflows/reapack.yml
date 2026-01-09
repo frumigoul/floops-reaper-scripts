@@ -11,9 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Necessario per scansionare la cronologia git
+
       - name: Run reapack-index
         uses: cfillion/reapack-index-action@v1
         with:
-          version: '1'
-          name: "Floop's Reaper Scripts"
           commit: true
