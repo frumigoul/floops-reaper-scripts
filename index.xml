@@ -112,15 +112,6 @@ v1.0.0
 }
 ]]></description>
       </metadata>
-      <version name="1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T19:18:40Z">
-        <changelog><![CDATA[v1.0 (2026-01-06)
-  - Initial release
-  - Basic track search functionality
-  - Track selection and previewing
-  - Animated floating UI
-  - Debounced search for smooth performance]]></changelog>
-        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/521bff8337ba1b21ebd8d2955e5140776b8cb097/scripts/Floop%20Search/Floop%20Search.lua</source>
-      </version>
       <version name="1.0.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
         <changelog><![CDATA[Initial release.
 Track search, selection, and previewing.
