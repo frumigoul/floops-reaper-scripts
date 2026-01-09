@@ -12,9 +12,27 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Necessario per scansionare la cronologia git
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.0
+
+      - name: Install reapack-index
+        run: gem install reapack-index
 
       - name: Run reapack-index
-        uses: cfillion/reapack-index-action@v1
+        run: reapack-index --commit
+        env:
+          # Configura git per il commit
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "github-actions[bot]"
+          GIT_COMMITTER_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
         with:
-          commit: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
