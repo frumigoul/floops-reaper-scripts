@@ -30,8 +30,8 @@
 local reaper = reaper
 
 --windows only script check
-local os = reaper.GetOS()
-if not os:match("Win") then
+local os_name = reaper.GetOS()
+if not os_name:match("Win") then
   reaper.MB(
     "This script is supported on Windows only.",
     "Unsupported Operating System",
