@@ -8,14 +8,14 @@
 \widowctrl\hyphauto
 
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Floop Chrominator\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 \u169 ? 2025-2026 Flora Tarantino\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \u169 ? 2025-2026 Floop-s\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Stereo Analog Saturator with five selectable modes (Soft, Even, Clip, Warm, Odd). Adds warmth, presence, and character from subtle color to heavier drive.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.\par}
 }
 ]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T07:44:58Z">
+      <version name="1.1.0" author="Floop-s" time="2026-01-06T07:44:58Z">
         <changelog><![CDATA[v1.1.0
   + Bug fixes and improvements.
   + Oversampling options: 1x, 2x, 4x with FIR anti-aliasing (HQ 17-tap).
@@ -44,7 +44,7 @@ v1.0.0
 ]]></description>
         <link rel="website">https://www.floratarantino.com</link>
       </metadata>
-      <version name="1.0.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
+      <version name="1.0.0" author="Floop-s" time="2026-01-08T18:37:17Z">
         <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/aae0204523dfc7e3443ace2bbe9ec009fb07c8af/effects/Floop%20Master%20Control/Floop%20Master%20Control.jsfx</source>
       </version>
     </reapack>
@@ -62,7 +62,7 @@ v1.0.0
 }
 ]]></description>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
+      <version name="1.1.0" author="Floop-s" time="2026-01-08T18:37:17Z">
         <changelog><![CDATA[v1.1.0
 - Added support for split clips and items not starting at 0.
 - Introduced interactive handles for manual segment adjustment.
@@ -88,7 +88,7 @@ v1.0.0
 }
 ]]></description>
       </metadata>
-      <version name="1.2.3" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T17:11:56Z">
+      <version name="1.2.3" author="Floop-s" time="2026-01-06T17:11:56Z">
         <changelog><![CDATA[+ Fixed: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
 + Fixed: JSFX reader disappearing when adjusting font scale on tracks with empty notes.
 + Fixed: Race condition when switching project tabs.
@@ -112,7 +112,7 @@ v1.0.0
 }
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
+      <version name="1.0.0" author="Floop-s" time="2026-01-08T18:37:17Z">
         <changelog><![CDATA[Initial release.
 Track search, selection, and previewing.
 Animated floating UI with debounced search.]]></changelog>
@@ -135,7 +135,7 @@ Animated floating UI with debounced search.]]></changelog>
 }
 ]]></description>
       </metadata>
-      <version name="2.1.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
+      <version name="2.1.0" author="Floop-s" time="2026-01-08T18:37:17Z">
         <changelog><![CDATA[v2.1
 - Added About/Credits section with Poppler attribution.
 - Restored Clear Cache button.
@@ -158,7 +158,7 @@ v2.0
 }
 ]]></description>
       </metadata>
-      <version name="1.1" author="Flora Tarantino (Floop's Reaper Script)" time="2026-01-06T07:44:58Z">
+      <version name="1.1" author="Floop-s" time="2026-01-06T07:44:58Z">
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/b1bf33e7074140dcf152f40342ded3826bb0ee99/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
       </version>
     </reapack>
@@ -201,7 +201,7 @@ v2.0
 }
 ]]></description>
       </metadata>
-      <version name="1.1.0" author="Flora Tarantino" time="2026-01-08T18:37:17Z">
+      <version name="1.1.0" author="Floop-s" time="2026-01-08T18:37:17Z">
         <changelog><![CDATA[v1.1
 - Idempotent 5-track creation.
 - Precise loop alignment with independent thresholds.
