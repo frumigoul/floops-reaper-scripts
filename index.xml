@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="f930dd35536710d0e9524c0db9b27bee697eef1b">
+<index version="1" name="Floop's Reaper Scripts" commit="f182c61f7dc4b7c28ee9da53d6d23ee7ec3333e2">
   <category name="Effects">
     <reapack name="Floop Chrominator" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -330,6 +330,31 @@ v2.0
       </metadata>
       <version name="1.1" author="Floop-s" time="2026-01-09T07:29:23Z">
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f930dd35536710d0e9524c0db9b27bee697eef1b/scripts/Floop%20Studio%20Trainer/Floop-Studio-Trainer.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/Floop-Useless Time-Based Effects Calculator">
+    <reapack name="Floop-Useless Time-Based Effects Calculator.lua" type="script">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 A utility script for REAPER to calculate time-based effect parameters.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Calculates compressor release times, reverb decay/predelay, and delay times based on the project BPM or custom values.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Features:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Real-time updates.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Supports standard, dotted, and triplet notes.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Reverb multipliers for Hall, Plate, and Room.\sa180\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1.0" author="Floop-s" time="2026-01-09T14:01:47Z">
+        <changelog><![CDATA[v1.1 (2025-01-09)
+  + Live calculation (removed Calculate buttons).
+  + Added unit toggle (ms / seconds).
+  + Improved UI layout and theme.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f182c61f7dc4b7c28ee9da53d6d23ee7ec3333e2/scripts/Floop-Useless%20Time-Based%20Effects%20Calculator/Floop-Useless%20Time-Based%20Effects%20Calculator.lua</source>
       </version>
     </reapack>
   </category>
