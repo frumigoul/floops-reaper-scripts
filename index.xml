@@ -49,6 +49,32 @@ v1.0.0
       </version>
     </reapack>
   </category>
+  <category name="effects/Floop Vert-ish">
+    <reapack name="Verti-ish VCA Compressor.jsfx" type="effect" desc="Verti-ish VCA Compressor">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Verti-ish VCA Compressor\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \u169 ? 2026 Floop-s\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 VCA-style compressor with a "Verti-ish" character.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Features:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab L/R independent thresholds\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Ratio, attack, release, and makeup gain\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Knee control\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Stereo and dual-mono modes\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Sidechain filters and harmonic saturation\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Suitable for mix bus, mastering, and drum processing. Keywords: compressor, VCA, dynamics, stereo, saturation.\par}
+}
+]]></description>
+        <link rel="website">https://www.floratarantino.com</link>
+      </metadata>
+      <version name="1.0.0" author="Floop-s" time="2026-01-09T07:29:23Z">
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f930dd35536710d0e9524c0db9b27bee697eef1b/effects/Floop%20Vert-ish/Verti-ish%20VCA%20Compressor.jsfx</source>
+      </version>
+    </reapack>
+  </category>
   <category name="scripts/Floop Ess Hunter">
     <reapack name="Floop Ess Hunter.lua" type="script">
       <metadata>
