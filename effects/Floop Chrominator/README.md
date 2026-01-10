@@ -7,6 +7,16 @@
 
 **Floop Chrominator** is a JSFX effect for REAPER that emulates stereo "analog" saturation with five selectable modes (Soft, Even, Clip, Warm, Odd). It adds warmth, presence, and character to tracks and buses, from subtle color to heavier drive, featuring oversampling, filters, tilt EQ, auto‑gain, and smooth parameter transitions.
 
+## Screenshot
+
+<p align="center"> 
+ <br> 
+ <a href="../../assets/floop-chrominator-v1.1.0.png" target="_blank"> 
+   <img src="../../assets/floop-chrominator-v1.1.0.png" width="450" alt="click to zoom in"> 
+ </a> 
+ <br> 
+ </p>
+
 ## Key Features
 
 *   **Five Saturation Modes**: Soft, Even, Clip, Warm, Odd.

@@ -9,6 +9,20 @@
 **Floop Search** is a Lua script for REAPER that brings a search bar for rapid track navigation, selection, and previewing.
 It features a sleek, floating, animated interface that stays out of your way until you need it.
 Designed for speed and keyboard-centric workflows, it allows you to find any track by name or track number without touching the mouse.
+## Screenshots
+
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floop-search-v1.0.0-s1.png" target="_blank"> 
+    <img src="../../assets/floop-search-v1.0.0-s1.png" width="450" style="border: 1px solid #9eda27ff;" alt="click to zoom in"> 
+  </a> 
+  <br> 
+   <br> 
+  <a href="../../assets/floop-search-v1.0.0-s2.png" target="_blank"> 
+    <img src="../../assets/floop-search-v1.0.0-s2.png" width="450" style="border: 1px solid #9eda27ff;" alt="click to zoom in"> 
+  </a> 
+  <br> 
+</p>
 
 ## Key Features
 

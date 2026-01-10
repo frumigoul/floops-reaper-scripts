@@ -6,15 +6,21 @@
 *   **Version**: 1.1
 *   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
 
-## Description
+## Overview
 
-**Floop Studio Trainer** allows you to practice your instrument inside Reaper using either an audio track or the metronome. You can set the number of repetitions for a selected section and define how many BPM to increase at a time.
+**Floop Studio Trainer** is a Lua script for REAPER that allows you to practice your instrument inside Reaper using either an audio track or the metronome. You can set the number of repetitions for a selected section and define how many BPM to increase at a time.
 Once configured, simply press start, and the script will automatically increase the project BPM after each cycle—without ever taking your hands off your instrument.
 The script also displays the remaining repetitions.
 
 ## Screenshots
 
-![Floop Studio Trainer Interface](screenshot.png)
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floop-studio-trainer-v1.1.png" target="_blank"> 
+    <img src="../../assets/floop-studio-trainer-v1.1.png" width="450"  alt="click to zoom in"> 
+  </a> 
+  <br> 
+</p>
 
 
 ## Key Features

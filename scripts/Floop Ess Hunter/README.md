@@ -8,6 +8,16 @@
 
 **Floop Ess Hunter** analyzes vocal items to detect sibilant sounds ("s", "sh", "ch") and automatically reduces their level by writing volume envelope points only on detected segments. The analysis is precise and configurable, aiming to preserve natural dynamics in speech and singing.
 
+## Screenshot
+
+<p align="center"> 
+ <br> 
+ <a href="../../assets/floop-ess-hunter-v1.1.0.png" target="_blank"> 
+   <img src="../../assets/floop-ess-hunter-v1.1.0.png" width="450" style="border: 1px solid #27a086ff;" alt="click to zoom in"> 
+ </a> 
+ <br> 
+ </p>
+
 ## Key Features
 
 *   **Multi-band Analysis**: Focuses on the 3.5–9.5 kHz range, plus ZCR (Zero Crossing Rate) detection.

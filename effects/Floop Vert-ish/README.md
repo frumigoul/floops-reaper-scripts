@@ -10,6 +10,18 @@
 It is perfect for mix bus glue, mastering applications, and punchy drum processing.
 The plugin features independent Left/Right controls for detailed stereo image shaping, along with harmonic saturation and oversampling options.
 
+## Screenshot
+
+<p align="center"> 
+ <br> 
+ <a href="../../assets/floop-vert-ish-v1.0.0.png" target="_blank"> 
+   <img src="../../assets/floop-vert-ish-v1.0.0.png" width="450" alt="click to zoom in"> 
+ </a> 
+ <br> 
+</p>
+
+
+
 ## Key Features
 
 *   **VCA Character**: Snappy and gluey compression characteristics.

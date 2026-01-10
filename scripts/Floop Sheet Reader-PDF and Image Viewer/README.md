@@ -1,4 +1,4 @@
-# Sheet Reader v2.1 - PDF & Image Viewer
+# Sheet Reader v2.1.0 - PDF & Image Viewer
 
 **Sheet Reader** is a Reaper script that allows you to load and view PDF and image files directly inside Reaper. The script utilizes Poppler to convert PDF files into images for display in the GUI. Users can zoom in and out using the buttons or "Ctrl + Mouse Wheel".
 
@@ -6,6 +6,16 @@
 
 **This script is developed exclusively for Windows.**
 It relies on PowerShell and Windows Script Host for dependency management and process handling. It will **not** function on macOS or Linux.
+
+## Screenshot
+
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floop-sheet-reader-s1-v2.1.0.png" target="_blank"> 
+    <img src="../../assets/floop-sheet-reader-s1-v2.1.0.png" width="450" style="border: 1px solid #e5ef2aff;" alt="click to zoom in"> 
+  </a> 
+  <br> 
+</p>
 
 ## Key Features
 

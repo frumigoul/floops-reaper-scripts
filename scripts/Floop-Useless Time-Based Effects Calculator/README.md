@@ -7,6 +7,17 @@
 **Floop Useless Time-Based Effects Calculator** is a Lua script for REAPER that helps you calculate essential time parameters for your effects based on the project BPM.
 It provides instant calculations for compressor release times, reverb decay/predelay, and delay times, helping you synchronize your effects perfectly with the tempo of your track.
 
+## Screenshot
+
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floop-useless-time-calculator-v1.1.0.png" target="_blank"> 
+    <img src="../../assets/floop-useless-time-calculator-v1.1.0.png" width="450"  alt="click to zoom in"> 
+  </a> 
+  <br> 
+  <br> 
+</p>
+
 ## Key Features
 
 *   **Real-Time Calculation**: Results update instantly as you change BPM, Note Value, or Reverb Type.

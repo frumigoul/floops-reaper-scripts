@@ -5,6 +5,17 @@ A live‑looping station for REAPER
 ## Overview
 **Floopa Station** is a live‑looping station for REAPER featuring 5 dedicated tracks, transport controls, Auto‑Loop, Micro‑Fades, Beat Counter, Count‑In, and a loop progress bar. Designed for fast performance and editing, it provides a coherent workflow, clean mapping, and a responsive UI. 
 
+## Screenshot
+
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floopa-station-v1.1.0.png" target="_blank"> 
+    <img src="../../assets/floopa-station-v1.1.0.png" width="450"  alt="click to zoom in"> 
+  </a> 
+  <br> 
+  <br> 
+</p>
+
 
 ## Key Features
 

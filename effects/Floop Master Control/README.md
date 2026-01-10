@@ -8,6 +8,24 @@
 **Floop Master Control** is a comprehensive mastering and monitoring suite written in JSFX for REAPER. It provides essential visual feedback for audio analysis, combining multiple metering tools into a single, efficient interface.
 It includes True Peak limiting/metering, LUFS metering, Spectrum Analysis, and Phase correlation view.
 
+## Screenshots
+
+<p align="center"> 
+ <br> 
+ <a href="../../assets/floop-master-control-s1-v1.0.0.png" target="_blank"> 
+   <img src="../../assets/floop-master-control-s1-v1.0.0.png" width="350" alt="click to zoom in"> 
+ </a> 
+ <br> 
+</p>
+<details>
+  <summary>📸 Click to view more screenshots</summary>
+  <p align="center">
+  <a href="../../assets/floop-master-control-s2-v1.0.0.png" target="_blank"><img src="../../assets/floop-master-control-s2-v1.0.0.png" height="350"></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="../../assets/floop-master-control-s3-v1.0.0.png" target="_blank"><img src="../../assets/floop-master-control-s3-v1.0.0.png" height="350"></a> 
+  </p>
+</details>
+
+
+
 ## Key Features
 
 *   **Spectrum Analyzer**: High-resolution (4096-point FFT) frequency analysis.

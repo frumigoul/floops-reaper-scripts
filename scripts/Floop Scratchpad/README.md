@@ -9,7 +9,20 @@
 Notes are automatically saved and recalled when switching tracks, keeping project annotations organized and accessible.
 The script generates a companion JSFX (FloopNoteReader) that displays your notes in the Track/Mixer panels when embedding is enabled.
 
+## Screenshots
 
+<p align="center"> 
+  <br> 
+  <a href="../../assets/floop-scratchpad-s1-v1.2.3.png" target="_blank"> 
+    <img src="../../assets/floop-scratchpad-s1-v1.2.3.png" width="450"  alt="click to zoom in"> 
+  </a> 
+  <br> 
+   <br> 
+  <a href="../../assets/floop-scratchpad-s2-v1.2.3.png" target="_blank"> 
+    <img src="../../assets/floop-scratchpad-s2-v1.2.3.png" width="450"  alt="click to zoom in"> 
+  </a> 
+  <br> 
+</p>
 
 ## Key Features
 
