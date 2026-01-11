@@ -1,10 +1,7 @@
 # Floop Studio Trainer
 
-**Your smart practice companion for Reaper.**
+**A smart practice companion for Reaper.**
 
-*   **Author**: © 2025-2026 Flora Tarantino (Floop's Reaper Script)
-*   **Version**: 1.1
-*   **Website**: [www.floratarantino.com](https://www.floratarantino.com)
 
 ## Overview
 
