@@ -1,22 +1,22 @@
 desc:Verti-ish VCA Compressor
 
--- @version 1.0.0
--- @author Floop-s
--- @license GPL-3.0
--- @about
---   VCA-style compressor with a "Verti-ish" character.
---
---   Features:
---   - L/R independent thresholds
---   - Ratio, attack, release, and makeup gain
---   - Knee control
---   - Stereo and dual-mono modes
---   - Sidechain filters and harmonic saturation
---
---   Suitable for mix bus, mastering, and drum processing.
---   Keywords: compressor, VCA, dynamics, stereo, saturation.
--- @provides
---   [effect] vert-ish-vca-compressor.jsfx
+// @version 1.0.0
+// @author Floop-s
+// @license GPL-3.0
+// @about
+//   VCA-style compressor with a "Verti-ish" character.
+//
+//   Features:
+//   - L/R independent thresholds
+//   - Ratio, attack, release, and makeup gain
+//   - Knee control
+//   - Stereo and dual-mono modes
+//   - Sidechain filters and harmonic saturation
+//
+//   Suitable for mix bus, mastering, and drum processing.
+//   Keywords: compressor, VCA, dynamics, stereo, saturation.
+// @provides
+//   [effect] vert-ish-vca-compressor.jsfx
 
 slider1: 0<-60,0,0.1>Threshold L (dB)
 slider2: 0<-60,0,0.1>Threshold R (dB)

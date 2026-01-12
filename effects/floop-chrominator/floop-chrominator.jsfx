@@ -1,21 +1,21 @@
 desc:Floop Chrominator (Stereo Analog Saturator)
 
--- @version 1.1.0
--- @author Floop-s
--- @license GPL-3.0
--- @about
---   Stereo analog saturator with five selectable modes:
---   Soft, Even, Clip, Warm, and Odd.
---
---   Adds warmth, presence, and character from subtle color
---   to heavier drive.
---
---   Features oversampling, filters, tilt EQ, auto-gain,
---   and smooth transitions.
---
---   Keywords: saturation, analog, drive, distortion, stereo.
--- @provides
---   [effect] floop-chrominator.jsfx
+// @version 1.1.0
+// @author Floop-s
+// @license GPL-3.0
+// @about
+//   Stereo analog saturator with five selectable modes:
+//   Soft, Even, Clip, Warm, and Odd.
+//
+//   Adds warmth, presence, and character from subtle color
+//   to heavier drive.
+//
+//   Features oversampling, filters, tilt EQ, auto-gain,
+//   and smooth transitions.
+//
+//   Keywords: saturation, analog, drive, distortion, stereo.
+// @provides
+//   [effect] floop-chrominator.jsfx
 
 
 in_pin: Left
