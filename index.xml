@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb">
+<index version="1" name="Floop's Reaper Scripts" commit="c011f1ccf4b3cf0da1021ff5b28dd1f353f0bd32">
   <category name="effects/floop-master-control">
     <reapack name="floop-master-control.jsfx" type="effect" desc="Floop Master Control">
       <metadata>
@@ -16,7 +16,7 @@
 {\pard \ql \f0 \sa180 \li0 \fi0 Useful for metering and monitoring during mastering. Keywords: LUFS, spectrum, phase, true peak, monitoring.\par}
 }
 ]]></description>
-        <link rel="website">https://www.floratarantino.com</link>
+        <link rel="website">https://www.floratarantino.com/floop-reaper-scripts/</link>
       </metadata>
       <version name="1.0.0" author="floop-s" time="2026-01-12T06:47:17Z">
         <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/effects/floop-master-control/floop-master-control.jsfx</source>
@@ -242,5 +242,6 @@ Animated floating UI with debounced search.]]></changelog>
 }
 ]]></description>
     <link rel="website">https://www.floratarantino.com</link>
+    <link rel="website">https://www.floratarantino.com/floop-reaper-scripts/</link>
   </metadata>
 </index>
