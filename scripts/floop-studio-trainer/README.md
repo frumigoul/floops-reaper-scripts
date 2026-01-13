@@ -48,7 +48,7 @@ The script also displays the remaining repetitions.
 
 1.  **Import the Repository**:
     *   Go to **Extensions > ReaPack > Import Repositories...**.
-    *   Paste the repository URL: `YOUR_REAPACK_REPOSITORY_URL_HERE`
+    *   Paste the repository URL: https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml
     *   Click **OK**.
 2.  **Install the Script**:
     *   Go to **Extensions > ReaPack > Browse Packages**.
