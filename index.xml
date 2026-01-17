@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="Floop's Reaper Scripts" commit="1ae37159d16b38d25cb743dcf8b02e67262ab55b">
+  <category name="effects/floop-chrominator">
+    <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Stereo analog saturator with five selectable modes: Soft, Even, Clip, Warm, and Odd.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Adds warmth, presence, and character from subtle color to heavier drive.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Features oversampling, filters, tilt EQ, auto-gain, and smooth transitions.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Keywords: saturation, analog, drive, distortion, stereo.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1.0" author="Floop-s" time="2026-01-12T13:21:00Z">
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f6a71f83b4aecc9cb2c5defb80c67c85dcff896c/effects/floop-chrominator/floop-chrominator.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="effects/floop-master-control">
+    <reapack name="floop-master-control.jsfx" type="effect" desc="Floop Master Control">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Integrated master monitoring and analysis tool for REAPER.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Includes:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab True Peak limiting and metering\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab LUFS integrated and short-term metering\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Spectrum analysis\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Phase correlation view\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Useful for metering and monitoring during mastering. Keywords: LUFS, spectrum, phase, true peak, monitoring.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="floop-s" time="2026-01-12T06:47:17Z">
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/effects/floop-master-control/floop-master-control.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="effects/floop-vert-ish">
+    <reapack name="vert-ish-vca-compressor.jsfx" type="effect" desc="Verti-ish VCA Compressor">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 VCA-style compressor with a "Verti-ish" character.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Features:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab L/R independent thresholds\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Ratio, attack, release, and makeup gain\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Knee control\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Stereo and dual-mono modes\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Sidechain filters and harmonic saturation\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Suitable for mix bus, mastering, and drum processing. Keywords: compressor, VCA, dynamics, stereo, saturation.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Floop-s" time="2026-01-12T13:21:00Z">
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f6a71f83b4aecc9cb2c5defb80c67c85dcff896c/effects/floop-vert-ish/vert-ish-vca-compressor.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-ess-hunter">
+    <reapack name="floop-ess-hunter.lua" type="script">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Floop Ess Hunter Taming hiss.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Detects and attenuates sibilance in vocal items by writing Volume envelope points. Features multi-band analysis, adaptive thresholds, and ZCR.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 For full documentation and changelog, please refer to the README file. Keywords: vocal, de-esser, envelope, processing, analysis\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1.0" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[v1.1.0
+- Added support for split clips and items not starting at 0.
+- Introduced interactive handles for manual segment adjustment.
+- Added per-segment volume control via vertical drag.
+- Fixed waveform display alignment for offset items.
+- "Analyze and Apply" now correctly handles item offsets and playrates.
+- "Close" button in title bar now matches standard close behavior.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-ess-hunter/floop-ess-hunter.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-scratchpad">
+    <reapack name="floop-scratchpad.lua" type="script" desc="Floop Scratchpad: per-track notes system">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Per-track notes system for REAPER.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Allows writing, viewing, and managing notes for each track. Notes are automatically saved and recalled when switching tracks.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab SWS/S&M extension\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dynamically generates a companion JSFX (FloopNoteReader) to display notes in the Track Control Panel.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Keywords: notes, track, text, workflow.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.2.3" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[+ Fixed: Notes lost when saving a previously unsaved project.
++ Fixed: JSFX reader disappearing on font scale changes.
++ Fixed: Race condition when switching project tabs.
++ Improved: Numeric display for Font Scale slider.
++ Internal: Improved project path detection.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-scratchpad/floop-scratchpad.lua</source>
+        <source main="main" file="floop-startup-refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-scratchpad/floop-startup-refresh.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-search">
+    <reapack name="floop-search.lua" type="script" desc="Floop Search: fast track navigation and search tool">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Fast track navigation and search tool for REAPER.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Provides a floating search bar for quickly locating, selecting, and previewing tracks.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer Keywords: search, navigation, track, workflow.\sa180\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[Initial release.
+Track search, selection, and previewing.
+Animated floating UI with debounced search.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-search/floop-search.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-sheet-reader">
+    <reapack name="floop-sheet-reader.lua" type="script" desc="Floop Sheet Reader: load and view PDF and image files.">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Windows-only script.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Sheet Reader v2.0\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \u169 ? 2025 2026 Floop-s\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Load and view PDF and image files directly inside Reaper. Uses Poppler for PDF-to-image conversion. First, the script checks if "pdftoppm" is installed. If not, it prompts the user\line to install Poppler automatically. Poppler is downloaded from the official release\line page and extracted to the Reaper resource folder:\line https://github.com/oschwartz10612/poppler-windows/releases/download/v25.12.0-0/Release-25.12.0-0.zip Once installed, the script converts PDF pages into images and displays them in the GUI.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires: reapack.com/repos/cfillion/reaimgui/ReaImGui_{\i .ext >= 0.10.2 reapack.com/repos/reapack/sws/SWS_}.ext keywords: sheet, pdf, image, viewer, score, music\par}
+}
+]]></description>
+      </metadata>
+      <version name="2.1.0" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[v2.1
+- Added About/Credits section with Poppler attribution.
+- Restored Clear Cache button.
+- Fixed tooltip contrast.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-sheet-reader/floop-sheet-reader.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-studio-trainer">
+    <reapack name="floop-studio-trainer.lua" type="script" desc="Floop Studio Trainer: practice your instrument inside Reaper.">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Floop Studio Trainer\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-studio-trainer/floop-studio-trainer.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floop-useless-time-based-effects-calculator">
+    <reapack name="floop-useless-time-based-effects-calculator.lua" type="script" desc="Floop Useless Time-Based Effects Calculator: time-based FX helper.">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 A utility script for REAPER to calculate time-based effect parameters.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Calculates compressor release times, reverb decay/predelay, and delay times based on the project BPM or custom values.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Features:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Real-time updates.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Supports standard, dotted, and triplet notes.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Reverb multipliers for Hall, Plate, and Room.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer\sa180\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1.0" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[v1.1 (2025-01-09)
+  + Live calculation (removed Calculate buttons).
+  + Added unit toggle (ms / seconds).
+  + Improved UI layout and theme.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-useless-time-based-effects-calculator/floop-useless-time-based-effects-calculator.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="scripts/floopa-station">
+    <reapack name="floopa-station.lua" type="script" desc="Floopa Station: five-track live looping station.">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Five-track live looping station for REAPER.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Designed for live performance with automated track setup, smart auto-looping, and hands-free control.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Requires:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab SWS Extension (ReaTeam Extensions repository) Keywords: looper, live performance, recording, workflow.\sa180\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.1.0" author="Floop-s" time="2026-01-12T06:47:17Z">
+        <changelog><![CDATA[v1.1
+- Idempotent 5-track creation.
+- Precise loop alignment with independent thresholds.
+- Robust setup/revert with full settings restore.
+- GUID-based MIDI control track management.
+- Docking support enabled.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floopa-station/floopa-station.lua</source>
+        <source file="modules/midi-map.lua">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floopa-station/modules/midi-map.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <metadata>
+    <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Floop\u8217's REAPER Scripts\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 This repository contains a collection of {\b JSFX effects} and {\b Lua scripts} for {\b REAPER}, focused on audio processing, monitoring, and workflow enhancement.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 All tools are released as {\b free and open-source software}.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Repository Structure\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The tools are organized into the following directories:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 scripts/}: Lua scripts\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 effects/}: JSFX effects\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Each tool is contained in its own folder and typically includes:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab the script or effect file ({\f1 .lua} or {\f1 .jsfx})\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab a dedicated {\f1 README.md} with usage instructions and details\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 This structure allows the repository to be used both:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab via {\b ReaPack}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab and by manually downloading individual tools from GitHub\sa180\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Installation\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Automatic Installation (Recommended \u8211- ReaPack)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 1.\tx360\tab Open {\b REAPER}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 2.\tx360\tab Go to {\b Extensions \u8594 ? ReaPack \u8594 ? Import Repositories\u8230 ?}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 3.\tx360\tab Paste the following URL:\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 https://github.com/floop-s/floops-reaper-scripts/raw/main/index.xml}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 4.\tx360\tab The repository will appear in ReaPack. Browse and install scripts or effects as needed.\sa180\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Manual Installation\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 1.\tx360\tab Download the repository\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Clone it with Git or download it as a ZIP file.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 2.\tx360\tab Locate the REAPER resource path\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab In REAPER, go to {\b Options \u8594 ? Show REAPER resource path in explorer / finder}\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 3.\tx360\tab Install the files\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Lua scripts}: Copy {\f1 .lua} files into the {\f1 Scripts} folder.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b JSFX effects}: Copy {\f1 .jsfx} files into the {\f1 Effects} folder.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 4.\tx360\tab Refresh REAPER\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Lua scripts}: Open the {\b Actions List} ({\f1 ?}) \u8594 ? {\b New Action \u8594 ? Load ReaScript\u8230 ?}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b JSFX effects}: Open the FX Browser and press {\b F5} to rescan effects.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Refer to each tool\u8217's own {\f1 README.md} for specific usage instructions and requirements.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Compatibility\par}
+{\pard \ql \f0 \sa180 \li360 \fi-360 \bullet \tx360\tab {\b Primary platform:} Developed and tested on {\b Windows}.\par}
+{\pard \ql \f0 \sa180 \li360 \fi-360 \bullet \tx360\tab {\b macOS / Linux:} Some scripts are designed to be cross-platform, but not all tools are tested on these systems. Compatibility and stability are not guaranteed. Feedback is welcome.\sa180\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Support & Expectations\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 All scripts and effects are provided {\b as-is}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab No guaranteed support is provided.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Bug reports and feedback are welcome, but responses may be limited.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Tools are tested only on systems I have direct access to.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 This project is maintained in my spare time.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 License\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 All contents of this repository are released under the {\b GNU General Public License v3.0 (GPL-3.0)}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 See the {\f1 LICENSE} file for full license details.\par}
+}
+]]></description>
+    <link rel="website">https://www.floratarantino.com/floop-reaper-scripts/</link>
+  </metadata>
+</index>
