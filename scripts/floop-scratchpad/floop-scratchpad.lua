@@ -1,4 +1,5 @@
 -- Floop Scratchpad - Per-track notes system for REAPER.
+-- @description Floop Scratchpad: per-track notes system
 -- @version 1.2.3
 -- @author Floop-s
 -- @license GPL-3.0
@@ -8,13 +9,15 @@
 --   + Fixed: Race condition when switching project tabs.
 --   + Improved: Numeric display for Font Scale slider.
 --   + Internal: Improved project path detection.
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
--- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about
 --   Per-track notes system for REAPER.
 --
 --   Allows writing, viewing, and managing notes for each track.
 --   Notes are automatically saved and recalled when switching tracks.
+--
+--   Requires:
+--     - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
+--     - SWS/S&M extension
 --
 --   Dynamically generates a companion JSFX (FloopNoteReader)
 --   to display notes in the Track Control Panel.

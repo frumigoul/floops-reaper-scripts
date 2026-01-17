@@ -1,4 +1,5 @@
 -- Floop Sheet Reader - PDF and Image Viewer
+-- @description Floop Sheet Reader: load and view PDF and image files.
 -- @version 2.1.0
 -- @author Floop-s
 -- @license GPL-3.0
@@ -7,8 +8,6 @@
 --   - Added About/Credits section with Poppler attribution.
 --   - Restored Clear Cache button.
 --   - Fixed tooltip contrast.
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
--- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about
 --   Windows-only script.
 --
@@ -23,6 +22,9 @@
 --   https://github.com/oschwartz10612/poppler-windows/releases/download/v25.12.0-0/Release-25.12.0-0.zip
 --   Once installed, the script converts PDF pages into images and displays them in the GUI.  
 --
+--    Requires:
+--     reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
+--     reapack.com/repos/reapack/sws/SWS_*.ext
 --    keywords: sheet, pdf, image, viewer, score, music
 -- @provides
 --   [main] floop-sheet-reader.lua

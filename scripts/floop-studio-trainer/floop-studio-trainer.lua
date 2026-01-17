@@ -1,8 +1,15 @@
 -- Floop Studio Trainer
+-- @description Floop Studio Trainer: practice your instrument inside Reaper.
 -- @version 1.1
 -- @author Floop-s
--- @license GPL v3.0
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
+-- @license GPL v-3.0
+-- @changelog
+--   v1.1 (2025-01-07)
+--   - Restore BPM: BPM restoration now guaranteed on force quit/crash.
+--   - Logic: Improved loop detection algorithm for short loops.
+--   - Safety: Added limits to BPM and repetition values to prevent errors.
+--   - UI: Scalable interface, refined styling, and clearer error messages.
+--   - Fixes: Better handling of manual seeks and pauses.
 -- @about
 --    Floop Studio Trainer
 --   © 2025-2026 Floop-s
@@ -10,7 +17,9 @@
 --   Practice your instrument inside Reaper using either an audio track or the metronome.
 --   Set repetitions and BPM increments to practice hands-free.
 --
---  Keywords: practice, loop, trainer, bpm, metronome
+--   Requires:
+--     - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
+--   Keywords: practice, loop, trainer, bpm, metronome
 -- @provides [main] floop-studio-trainer.lua
 
 

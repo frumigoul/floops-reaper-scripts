@@ -1,4 +1,5 @@
 -- Floop Useless Time-Based Effects Calculator
+-- @description Floop Useless Time-Based Effects Calculator: time-based FX helper.
 -- @version 1.1.0
 -- @author Floop-s
 -- @license GPL-3.0
@@ -7,7 +8,6 @@
 --     + Live calculation (removed Calculate buttons).
 --     + Added unit toggle (ms / seconds).
 --     + Improved UI layout and theme.
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @about
 --   A utility script for REAPER to calculate time-based effect parameters.
 --
@@ -18,6 +18,10 @@
 --   * Real-time updates.
 --   * Supports standard, dotted, and triplet notes.
 --   * Reverb multipliers for Hall, Plate, and Room.
+--
+--    Requires:
+--     - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
+--
 -- @provides
 --   [main] floop-useless-time-based-effects-calculator.lua
 

@@ -1,4 +1,5 @@
 -- Floop Search - Track Navigation System
+-- @description Floop Search: fast track navigation and search tool
 -- @version 1.0.0
 -- @author Floop-s
 -- @license GPL-3.0
@@ -6,13 +7,14 @@
 --   Initial release.
 --   Track search, selection, and previewing.
 --   Animated floating UI with debounced search.
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @about
 --   Fast track navigation and search tool for REAPER.
 --
 --   Provides a floating search bar for quickly locating,
 --   selecting, and previewing tracks.
 --
+--   Requires:
+--     - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
 --   Keywords: search, navigation, track, workflow.
 -- @provides
 --   [main] floop-search.lua

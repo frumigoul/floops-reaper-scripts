@@ -1,3 +1,5 @@
+-- Floopa Station
+-- @description Floopa Station: five-track live looping station.
 -- @version 1.1.0
 -- @author Floop-s
 -- @license GPL-3.0
@@ -8,14 +10,15 @@
 --   - Robust setup/revert with full settings restore.
 --   - GUID-based MIDI control track management.
 --   - Docking support enabled.
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
--- @dependency reapack.com/repos/reapack/sws/SWS_*.ext
 -- @about
 --   Five-track live looping station for REAPER.
 --
 --   Designed for live performance with automated track setup,
 --   smart auto-looping, and hands-free control.
 --
+--   Requires:
+--   - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
+--   - SWS Extension (ReaTeam Extensions repository)
 --   Keywords: looper, live performance, recording, workflow.
 -- @provides
 --   [main] floopa-station.lua
