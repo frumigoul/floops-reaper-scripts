@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="1ae37159d16b38d25cb743dcf8b02e67262ab55b">
+<index version="1" name="Floop's Reaper Scripts" commit="02a2f9d6e840ebc4ec2f086bbe5e19e492b5a3cd">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -65,7 +65,7 @@
     </reapack>
   </category>
   <category name="scripts/floop-ess-hunter">
-    <reapack name="floop-ess-hunter.lua" type="script">
+    <reapack name="floop-ess-hunter.lua" type="script" desc="Floop Ess Hunter: tame hiss and sibilance with envelopes.">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
 {\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
