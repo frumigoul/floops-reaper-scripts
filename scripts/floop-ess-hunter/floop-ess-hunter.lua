@@ -2,7 +2,6 @@
 -- @version 1.1.0
 -- @author Floop-s
 -- @license GPL-3.0
--- @dependency reapack.com/repos/cfillion/reaimgui/ReaImGui_*.ext >= 0.10.2
 -- @changelog
 --   v1.1.0
 --   - Added support for split clips and items not starting at 0.
@@ -18,8 +17,11 @@
 --   Detects and attenuates sibilance in vocal items by writing Volume envelope points.
 --   Features multi-band analysis, adaptive thresholds, and ZCR.
 --
+--   Requires:
+--     - ReaImGui (ReaTeam Extensions repository), v0.10.2 or newer
+--
 --   For full documentation and changelog, please refer to the README file.
---   keywords vocal, de-esser, envelope, processing, analysis
+--   Keywords: vocal, de-esser, envelope, processing, analysis
 -- @provides [main] floop-ess-hunter.lua
 
 
