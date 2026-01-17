@@ -1,4 +1,5 @@
 -- Floop Ess Hunter Taming hiss in a single pass.
+-- @description Floop Ess Hunter: tame hiss and sibilance with envelopes.
 -- @version 1.1.0
 -- @author Floop-s
 -- @license GPL-3.0
