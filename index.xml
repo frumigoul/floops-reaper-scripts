@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="02a2f9d6e840ebc4ec2f086bbe5e19e492b5a3cd">
+<index version="1" name="Floop's Reaper Scripts" commit="efa4ea774f61ec1124e15d016044870a9c53b5e6">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -232,6 +232,12 @@ Animated floating UI with debounced search.]]></changelog>
 - Docking support enabled.]]></changelog>
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floopa-station/floopa-station.lua</source>
         <source file="modules/midi-map.lua">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floopa-station/modules/midi-map.lua</source>
+      </version>
+      <version name="1.1.1" author="Floop-s" time="2026-01-18T13:40:32Z">
+        <changelog><![CDATA[v1.1.1
+- Auto-Loop length and recording position fixed (timeline-agnostic behavior).]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/efa4ea774f61ec1124e15d016044870a9c53b5e6/scripts/floopa-station/floopa-station.lua</source>
+        <source file="modules/midi-map.lua">https://github.com/floop-s/floops-reaper-scripts/raw/efa4ea774f61ec1124e15d016044870a9c53b5e6/scripts/floopa-station/modules/midi-map.lua</source>
       </version>
     </reapack>
   </category>
