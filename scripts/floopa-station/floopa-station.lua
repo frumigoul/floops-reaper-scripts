@@ -1,15 +1,11 @@
 -- Floopa Station
 -- @description Floopa Station: five-track live looping station.
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
---   v1.1
---   - Idempotent 5-track creation.
---   - Precise loop alignment with independent thresholds.
---   - Robust setup/revert with full settings restore.
---   - GUID-based MIDI control track management.
---   - Docking support enabled.
+--   v1.1.1
+--   - Auto-Loop length and recording position fixed (timeline-agnostic behavior).
 -- @about
 --   Five-track live looping station for REAPER.
 --
@@ -2674,20 +2670,21 @@ local function quantizeEndToMeasureSmart(startPos, endPos)
     return boundary, measures
 end
 
+local function debugAutoLoop(msg) end
+
 -- Logic to capture first take and set auto loop
 local function autoLoopPoll()
     if not State.loop.autoEnabled then return end
     
     local manual = hasManualLoopSelection()
-    if manual then
-        State.loop.locked = true
-        return
+    if manual ~= State.loop._lastManualFlag then
+        if manual then
+            debugAutoLoop("manual selection present (autoloop continues)")
+        else
+            debugAutoLoop("manual selection cleared")
+        end
+        State.loop._lastManualFlag = manual
     end
-    -- Auto-unlock when manual selection is cleared
-    if State.loop.locked and not manual then
-        State.loop.locked = false
-    end
-    if State.loop.locked then return end
 
     
 
@@ -2699,33 +2696,39 @@ local function autoLoopPoll()
 
     -- Transition to recording: capture start 
     if (not wasRec) and isRec then
+        if reaper.ClearConsole then reaper.ClearConsole() end
         local rawPos = reaper.GetPlayPosition()
         if State.loop.startAlign == 'measure' then
             State.loop.startPos = quantizeToNearestMeasure(rawPos)
         else
             State.loop.startPos = rawPos
         end
-        -- Temporarily disable auto-punch 
+        debugAutoLoop(string.format("enter rec rawPos=%.3f align=%s startPos=%.3f", rawPos or -1, State.loop.startAlign or "", State.loop.startPos or -1))
         local autoPunchActive = reaper.GetToggleCommandState(40076) == 1
         if autoPunchActive and (not hasManualLoopSelection()) then
             reaper.Main_OnCommand(40252, 0) -- Record mode: normal
             State.transport.tempDisableAutoPunch = true
+            debugAutoLoop("auto punch disabled temporarily")
         end
-        -- Clear any non-manual time selection 
         local s, e = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
         if (not hasManualLoopSelection()) and s and e and (e - s) > 0.0001 then
+            debugAutoLoop(string.format("clearing existing non-manual selection start=%.3f end=%.3f", s or -1, e or -1))
             reaper.GetSet_LoopTimeRange(true, false, 0, 0, false)
         end
         
     end
 
-    -- Transition out of recording: compute and set loop
     if wasRec and (not isRec) and State.loop.startPos then
        
         local endPos = reaper.GetPlayPosition()
         local startSel = State.loop.startPos
         local endSel = endPos
-     
+        debugAutoLoop(string.format("exit rec startSel=%.3f endSel=%.3f", startSel or -1, endSel or -1))
+        local searchEnd = endPos
+        if not searchEnd or searchEnd <= startSel then
+            searchEnd = startSel + 3600.0
+            debugAutoLoop(string.format("endPos<=startSel, widening searchEnd to %.3f", searchEnd))
+        end
         local flist = getFloopaTracks()
         local minStart = math.huge
         local maxEnd = 0
@@ -2742,7 +2745,7 @@ local function autoLoopPoll()
                     if type(pos) == 'number' and type(len) == 'number' then
                         local itEnd = pos + len
                        
-                        if (itEnd > (startSel - eps)) and (pos < (endPos + eps)) then
+                        if (itEnd > (startSel - eps)) and (pos < (searchEnd + eps)) then
                             if pos < minStart then minStart = pos end
                             if itEnd > maxEnd then maxEnd = itEnd end
                         end
@@ -2750,25 +2753,39 @@ local function autoLoopPoll()
                 end
             end
         end
-        if maxEnd > 0 and minStart < math.huge then
-            startSel = minStart
-            endSel = maxEnd
+        local haveItems = (maxEnd > 0 and minStart < math.huge)
+        local baseStart = startSel
+        local baseEnd = endSel
+        if haveItems then
+            baseStart = minStart
+            baseEnd = maxEnd
         end
+        debugAutoLoop(string.format("items window haveItems=%s minStart=%.3f maxEnd=%.3f eps=%.4f", tostring(haveItems), minStart or -1, maxEnd or -1, eps or -1))
         local qEnd, measures
         if State.loop.rounding == 'nearest' then
-            qEnd, measures = quantizeEndToMeasureNearest(startSel, endSel)
+            qEnd, measures = quantizeEndToMeasureNearest(baseStart, baseEnd)
         elseif State.loop.rounding == 'smart' then
-            qEnd, measures = quantizeEndToMeasureSmart(startSel, endSel)
+            qEnd, measures = quantizeEndToMeasureSmart(baseStart, baseEnd)
         else
-            qEnd, measures = quantizeEndToMeasureForward(startSel, endSel)
+            qEnd, measures = quantizeEndToMeasureForward(baseStart, baseEnd)
         end
-        if qEnd and startSel and qEnd > startSel then
+        debugAutoLoop(string.format("quantize mode=%s baseStart=%.3f baseEnd=%.3f qEnd=%s measures=%s", State.loop.rounding or "", baseStart or -1, baseEnd or -1, qEnd and string.format("%.3f", qEnd) or "nil", tostring(measures)))
+        if (not qEnd) or (qEnd <= baseStart) then
+            qEnd = baseEnd
+            if not measures or measures < 1 then
+                measures = 1
+            end
+            debugAutoLoop(string.format("fallback qEnd=%.3f measures=%s", qEnd or -1, tostring(measures)))
+        end
+        if qEnd and baseStart and qEnd > baseStart then
 
             local cfg = State.loop.microFades or { durationMs = 5 }
             local fadeLen = math.max(0, math.min(500, tonumber(cfg.durationMs) or 5)) / 1000.0
             local threshold = math.max(eps or 0.05, fadeLen)
-            startSel, qEnd = alignLoopToNearestItemBoundaries(startSel, qEnd, threshold)
-            reaper.GetSet_LoopTimeRange(true, false, startSel, qEnd, false)
+            baseStart, qEnd = alignLoopToNearestItemBoundaries(baseStart, qEnd, threshold)
+            reaper.GetSet_LoopTimeRange(true, false, baseStart, qEnd, false)
+            local s2, e2 = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
+            debugAutoLoop(string.format("loop range set start=%.3f end=%.3f", s2 or -1, e2 or -1))
            
             if reaper.GetToggleCommandState(1068) ~= 1 then
                 reaper.Main_OnCommand(1068, 0) -- Repeat ON
@@ -2785,24 +2802,26 @@ local function autoLoopPoll()
             local playState = reaper.GetPlayState()
             local playing = (playState & 1) == 1
             local pos = reaper.GetPlayPosition()
-            if playing and (pos < startSel or pos > qEnd) then
+            if playing and (pos < baseStart or pos > qEnd) then
+                debugAutoLoop(string.format("playhead outside loop pos=%.3f, restarting at %.3f", pos or -1, baseStart or -1))
                 reaper.OnStopButton()
-                reaper.SetEditCurPos(startSel, true, false)
+                reaper.SetEditCurPos(baseStart, true, false)
                 reaper.OnPlayButton()
             else
-                -- Place cursor at loop start to guarantee next playback starts inside selection
-                reaper.SetEditCurPos(startSel, true, false)
+                reaper.SetEditCurPos(baseStart, true, false)
+                debugAutoLoop(string.format("cursor moved to loop start %.3f", baseStart or -1))
             end
             State.loop.locked = true
             statusSet(string.format("Auto loop set: %d measure(s)", measures or 1), "ok", 2.5)
         else
-            notifyInfo("Auto loop: unable to quantize first take.")
+            debugAutoLoop("no valid loop window, nothing applied")
         end
         State.loop.startPos = nil
         -- Restore auto-punch if it was temporarily disabled
         if State.transport.tempDisableAutoPunch then
             reaper.Main_OnCommand(40076, 0) 
             State.transport.tempDisableAutoPunch = false
+            debugAutoLoop("auto punch restored")
         end
     end
 end
@@ -3330,9 +3349,8 @@ end
             reaper.ImGui_TextWrapped(State.ui.ctx, "• Press 'Setup Floopa' to create the tracks and configure your project.")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• 'Setup Floopa' clears any existing Time Selection and loop points so you start clean.")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• Use 'Loop Length' to set the desired measures; select '--' to remove the selection and loop points.")
-            reaper.ImGui_TextWrapped(State.ui.ctx, "• Enable 'Auto Loop' if you want recordings to align to the selection automatically.")
+            reaper.ImGui_TextWrapped(State.ui.ctx, "• Enable 'Auto Loop' if you want recordings to define loop length and alignment automatically, at any position on the timeline.")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• Configure 'Start' (Alignment: Measure/Exact) and 'End' (Rounding: Smart/Nearest/Forward) for Auto‑Loop.")
-            reaper.ImGui_TextWrapped(State.ui.ctx, "• Auto‑Loop prerequisite: recording must start at the first measure (bar 1).")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• Use 'Rec' to record and 'Play/Pause' to listen inside the loop.")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• The Beat Counter shows the current meter and the progress bar displays loop progression.")
             reaper.ImGui_TextWrapped(State.ui.ctx, "• In the 'FLOOPA TRACKS' panel you will find info for the selected track and shortcuts for input, mute, FX, reverse and transpose.")
@@ -3347,12 +3365,12 @@ end
              reaper.ImGui_Spacing(State.ui.ctx)
 
              -- Auto-Loop details 
-             reaper.ImGui_SeparatorText(State.ui.ctx, "Auto-Loop details")
-             reaper.ImGui_TextWrapped(State.ui.ctx, "Auto‑Loop aligns recordings to your Time Selection and applies rounding at loop end. Configure Start Align and End Rounding to match your workflow.")
+            reaper.ImGui_SeparatorText(State.ui.ctx, "Auto-Loop details")
+            reaper.ImGui_TextWrapped(State.ui.ctx, "Auto‑Loop uses your first recording pass to set loop length and position, then applies rounding at loop end. Configure Start Align and End Rounding to match your workflow.")
             reaper.ImGui_BulletText(State.ui.ctx, "Start Align: Measure (align to bar start) or Exact (align to selection start)")
             reaper.ImGui_BulletText(State.ui.ctx, "End Rounding: Smart / Nearest / Forward")
             reaper.ImGui_BulletText(State.ui.ctx, "Tolerance (Epsilon): Dynamic or Strict (ms)")
-            reaper.ImGui_BulletText(State.ui.ctx, "Prerequisite: recording must start at the first measure (bar 1).")
+            reaper.ImGui_BulletText(State.ui.ctx, "Works from any position on the timeline; recording no longer needs to start at bar 1.")
             reaper.ImGui_Spacing(State.ui.ctx)
             
             -- Count-In

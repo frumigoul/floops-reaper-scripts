@@ -31,8 +31,9 @@ A live‑looping station for REAPER
 ## Requirements
 
 *   **REAPER v7.5x** or later.
-*   **ReaImGui**: "ReaScript binding for Dear ImGui" installed via ReaPack. **Minimum version required: 0.10.2+**.
 *   **SWS/S&M Extension**: Required for automatic project startup refresh.
+*   **ReaImGui**: "ReaScript binding for Dear ImGui" installed via ReaPack. **Minimum version required: 0.10.2+**.
+
 
 ## Compatibility
 *   **REAPER**: Developed and tested on **v7.5x+** (Windows).
@@ -56,8 +57,8 @@ The easiest way to install and keep the script updated is via **ReaPack**.
     - Restart REAPER.
 
 3.  **Install Floopa Station**:
-    - Add my repository to ReaPack or download the script manually.
-    - If manual: Place `Floopa Station.lua` into REAPER's Scripts folder.
+    - Add my repository to ReaPack (see Project home) or download the script manually.
+    - If manual: extract the entire `Floopa Station` folder (including all modules and subfolders) into REAPER's **Scripts**   directory inside the REAPER **Resource Path**  (Options → Show REAPER resource path in explorer/finder).
 
 4.  **Load the Script**:
     - Open Action List (`?`).
@@ -75,8 +76,8 @@ The easiest way to install and keep the script updated is via **ReaPack**.
 
 ## Usage Notes
 
-- **Auto‑Loop**: Handles start alignment and Repeat automatically when using "Setup Floopa".
-- **Auto‑Loop prerequisite**: Works only when recording starts at the first measure (bar 1).
+79→- **Auto‑Loop**: Uses your first recording pass to set loop length and alignment at any position on the timeline and handles Repeat automatically when using "Setup Floopa".
+80→- **Auto‑Loop behavior**: Works from any position on the timeline; recording no longer needs to start at bar 1.
 - **Micro‑Fades**: Smooth clip edges; toggle via "Auto Fades".
 - **Count‑In**: Plays pre‑roll clicks before recording only (metronome ON for pre‑roll, OFF during recording). Defaults to 2 measures (adjustable in REAPER settings).
 
@@ -111,7 +112,10 @@ The easiest way to install and keep the script updated is via **ReaPack**.
 
 ## Changelog
 
-### v1.1 (2026-01-08)
+### v1.1.1 (2026-01-18)
+- Auto-Loop length and recording position fixed (timeline-agnostic behavior).
+
+### v1.1.0 (2026-01-08)
 - **Stability & Logic**:
   - Rewrote `ensureFloopaTracksIdempotent` to guarantee 5 tracks without duplication or errors.
   - Improved `alignLoopToNearestItemBoundaries` with independent start/end thresholds for precise loop alignment.
@@ -121,7 +125,7 @@ The easiest way to install and keep the script updated is via **ReaPack**.
   - Enabled Docking support (removed NoDocking flag).
   
 
-### v1.0 (2025-03-08)
+### v1.0.0 (2025-03-08)
 - Initial release.
 - Added Count‑In checkbox and metronome snapshot restoration.
 - Improved consistency of progress bar and HUD.
