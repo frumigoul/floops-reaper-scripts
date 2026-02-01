@@ -1,7 +1,9 @@
 desc:Floop Master Control
-// @version 1.0.0
+// @version 1.1.0
 // @author Floop-s
 // @license GPL-3.0
+// @changelog
+//   Optimized MPC Layout, Smart Scaling, UI Cleanup
 // @about
 //   Integrated master monitoring and analysis tool for REAPER.
 //
@@ -27,7 +29,6 @@ slider6:lufs_s_limit_db=-14<-36,0,0.1>LUFS-S Target
 slider7:spec_avg_mode=0<0,2,1{Fast,Slow,Infinite}>Spectrum AVG
 slider8:spec_slope_db=4.5<0,6,0.1>Spectrum Slope (dB/oct)
 slider9:spec_freeze=0<0,1,1>Spectrum Freeze
-slider10:meter_font_sz=12<10,26,1>Values Font Size
 slider11:spec_smooth_mode=0<0,2,1{1/3 Oct,1/12 Oct,1/24 Oct}>Smoothing
 slider12:spec_mode_ms=0<0,1,1{Stereo,Mid/Side}>Spectrum Mode
 slider13:phase_view_mode=0<0,1,1{Bar,Multi}>Phase View
@@ -119,6 +120,7 @@ loop(fft_bins,
   i += 1;
 );
 
+ui_scale = 1.0; // Initialize ui_scale for HiDPI support
 ui_w = 0; ui_h = 0;
 last_mouse_cap = 0;
 
@@ -700,9 +702,10 @@ fft_ring_pos >= fft_step_size ? (
 );
 
 @gfx 240 980
+  draw_tooltip = 0;
 
-// FFT Processing moved to @sample for Ring Buffer support (75% overlap)
-// This ensures smoother updates and correct temporal smoothing regardless of framerate.
+// FFT Processing (Ring Buffer with 75% overlap)
+// Ensures smoother updates and correct temporal smoothing regardless of framerate.
 
 
 function SetColor(r, g, b, a) ( gfx_r=r; gfx_g=g; gfx_b=b; gfx_a=a; );
@@ -787,6 +790,11 @@ function DrawSpectrumGraph(buf, r, g, b, a, is_line, is_fill, is_peak) (
 );
 
 function Button(x, y, w, h, label, toggle_state) (
+  // Set font size relative to button height or global norm
+  b_font_sz = max(f_sz_norm, min(floor(h * 0.6), 24));
+  b_font_sz = max(b_font_sz, 13); // Minimum font size
+  gfx_setfont(1, "Arial", b_font_sz);
+
   hover = mouse_x >= x && mouse_x < x+w && mouse_y >= y && mouse_y < y+h;
   down = hover && (mouse_cap&1);
   result = hover && (mouse_cap&1) && !(last_mouse_cap&1);
@@ -807,15 +815,135 @@ function Button(x, y, w, h, label, toggle_state) (
   result;
 );
 
+function UpdateLayout() (
+  // Adaptive layout calculation for MPC (compact) and Extended modes.
+  
+  // 0. Safety Check
+  ui_scale <= 0 ? ui_scale = 1.0;
+
+  // 1. Calculate Width-based Scale
+  scale_w = (gfx_w / 380) * ui_scale;
+  
+  // 2. Calculate Height-based Limit
+  // Reference: Header + Gaps + Panels = ~540px at scale 1.0
+  scale_h = (gfx_h / 520) * ui_scale; 
+  
+  // 3. Determine Final Scale
+  scale = min(scale_w, scale_h);
+  
+  // 4. Clamping
+  scale = min(max(scale, 0.45), 2.0); 
+  
+  // Compact Mode Trigger (< 300px)
+  compact_mode = gfx_w < 300;
+
+  // Threshold 0.55: Differentiates between 15" screens (scale < 0.55) and 4K/Larger screens (scale >= 0.55) in MPC mode.
+  // Below 0.55: Activates ultra-compact layout (hidden scope, abbreviated labels).
+  small_screen_mode = scale < 0.55;
+
+  pad = max(4, floor(8 * scale));
+  gap = max(4, floor(8 * scale));
+  panel_gap = gap;
+  panel_pad = pad;
+  
+  header_h = max(20, floor(26 * scale));
+  panel_title_h = max(20, floor(22 * scale));
+  
+  btn_ui_w = max(18, floor(22 * scale));
+  btn_ui_h = max(16, floor(20 * scale));
+  
+  meter_bar_h = max(10, floor(16 * scale));
+ // Font definitions
+  f_sz_small = max(11, floor(11 * scale));
+  f_sz_norm = max(13, floor(13 * scale));
+  f_sz_title = max(15, floor(16 * scale));
+  
+  // Font scaling logic
+  compact_mode ? (
+    // MPC Mode: Fixed scale thresholds
+    scale >= 0.55 ? (
+       // Large screen/4K: Boost fonts
+       f_sz_meter = max(18, floor(20 * scale));
+       f_sz_norm = max(15, floor(15 * scale)); 
+       f_sz_small = max(13, floor(13 * scale)); 
+    ) : (
+       // Small screen: Minimal sizes
+       f_sz_meter = max(10, floor(11 * (scale / 0.45)));
+    );
+  ) : (
+    // Extended Mode: Proportional scaling
+    f_sz_meter = max(12, floor(16 * scale)); 
+  );
+  
+  toolbar_h = max(20, floor(24 * scale));
+
+  // Panel Height Calculation
+  // Elastic height logic
+  min_panel_h = max(35, 54 * (scale / 0.64)); 
+
+  // 1. Calculate Base Optimal Heights
+  base_h_reg = max(min_panel_h, floor(58 * scale));
+  base_h_tp = max(min_panel_h, floor(58 * scale));
+  base_h_mon = max(min_panel_h, floor(84 * scale));
+  base_h_spec = max(min_panel_h, floor(80 * scale)); 
+  
+  // 2. Calculate Total Vertical Space Required (excluding expandable areas)
+  total_gaps = (gap * 6) + header_h + pad; 
+  
+  // Hide Oscilloscope on small screens (< 0.55)
+  compact_mode && scale < 0.55 ? (
+      total_base_h = base_h_tp + (base_h_reg * 3) + base_h_mon + base_h_spec + total_gaps;
+  ) : (
+      total_base_h = base_h_tp + (base_h_reg * 4) + base_h_mon + base_h_spec + total_gaps;
+  );
+  
+  // 3. Vertical Stretch Logic
+  avail_h = gfx_h;
+  
+  avail_h > total_base_h ? (
+     // Calculate Expansion Factor
+     extra_h = avail_h - total_base_h;
+     
+     // Distribute extra height among panels (weighted)
+     w_total = 1.2 + (1.2 * 4) + 1.5 + 1.5; 
+     
+     unit_extra = extra_h / w_total;
+     
+     panel_h_tp = base_h_tp + floor(unit_extra * 1.2);
+     panel_h_reg = base_h_reg + floor(unit_extra * 1.2);
+     panel_h_mon = base_h_mon + floor(unit_extra * 1.5);
+     panel_h_spec = base_h_spec + floor(unit_extra * 1.5);
+
+     // Assign residual pixels to Monitor panel
+     
+     compact_mode && scale < 0.55 ? (
+        used_h = panel_h_tp + (panel_h_reg * 3) + panel_h_mon + panel_h_spec + total_gaps;
+     ) : (
+        used_h = panel_h_tp + (panel_h_reg * 4) + panel_h_mon + panel_h_spec + total_gaps;
+     );
+
+     residue = avail_h - used_h;
+     residue > 0 ? (
+       panel_h_mon += residue;
+     );
+  ) : (
+     // Tight fit
+     panel_h_tp = base_h_tp;
+     panel_h_reg = base_h_reg;
+     panel_h_mon = base_h_mon;
+     panel_h_spec = base_h_spec;
+  );
+);
+
 function Panel(x, y, w, h, title) (
   SetColor(0.07, 0.07, 0.08, 1);
   DrawBox(x, y, w, h, 1);
   SetColor(0.149, 0.149, 0.173, 1);
   DrawBox(x, y, w, h, 0);
   SetColor(1, 1, 1, 0.70);
-  gfx_setfont(1, "Arial", 12);
-  gfx_x = x + 8;
-  gfx_y = y + 6;
+  gfx_setfont(1, "Arial", f_sz_norm);
+  gfx_x = x + pad;
+  gfx_y = y + floor(6 * scale);
   gfx_drawstr(title);
 );
 
@@ -825,20 +953,23 @@ gfx_dest = -1;
 SetColor(c_bg_r, c_bg_g, c_bg_b, 1);
 DrawBox(0, 0, gfx_w, gfx_h, 1);
 
-pad = 8;
-gap = 8;
+(gfx_w != last_w || gfx_h != last_h || ui_scale != last_ui_scale) ? (
+  UpdateLayout();
+  last_w = gfx_w;
+  last_h = gfx_h;
+  last_ui_scale = ui_scale;
+  gfx_setfont(1, "Arial", f_sz_norm);
+);
 
-header_h = 26;
 SetColor(0.18, 0.18, 0.20, 1);
 DrawBox(0, 0, gfx_w, header_h, 1);
 SetColor(1, 1, 1, 0.92);
-gfx_setfont(1, "Arial", 15);
+gfx_setfont(1, "Arial", f_sz_title);
 DrawTextCent(0, 0, gfx_w, header_h, "Floop Master Control");
 
-btn_ui_w = 22;
-btn_ui_h = 20;
+
 btn_ui_x = gfx_w - pad - btn_ui_w;
-btn_ui_y = 3;
+btn_ui_y = floor((header_h - btn_ui_h) * 0.5);
 Button(btn_ui_x, btn_ui_y, btn_ui_w, btn_ui_h, "C", sliders_showing) ? (
   sliders_showing = slider_show(UI_SLIDER_MASK, -1) > 0;
 );
@@ -854,37 +985,23 @@ mouse_click = (mouse_cap&1) && !(last_mouse_cap&1);
 mouse_click_r = (mouse_cap&2) && !(last_mouse_cap&2);
 mouse_ctrl = mouse_cap&16;
 
-panel_gap = gap;
-panel_title_h = 22;
-panel_pad = 8;
-n_panels = 7;
-tp_scale = 0.7;
-n_units = (n_panels - 1) + tp_scale;
+// Vertical layout heights handled in UpdateLayout.
 
-avail_h = gfx_h - pad - y;
-avail_h < 1 ? avail_h = 1;
-
-base_h = floor((avail_h - panel_gap*(n_panels - 1)) / n_units);
-base_h < 25 ? base_h = 25; // Ridotto drasticamente il limite minimo per adattarsi a schermi piccoli
-
-panel_h_reg = base_h;
-panel_h_tp = floor(base_h * tp_scale);
-panel_h_tp < 30 ? panel_h_tp = 30; // Ridotto limite minimo pannello TP
-
-panel_h = panel_h_reg;
-
-btn_inner_h = panel_h - panel_title_h - 6;
+// Button sizing for general panels
+btn_inner_h = panel_h_reg - panel_title_h - floor(6 * scale);
 ui_btn_h = floor((btn_inner_h - gap) * 0.5);
-ui_btn_h > 32 ? ui_btn_h = 32;
-ui_btn_h < 8 ? ui_btn_h = 8;
 
-// Dynamic Font Size Calculation (Spostato qui per usare base_h)
-dyn_font_sz = meter_font_sz;
-gfx_w < 400 ? dyn_font_sz = min(dyn_font_sz, 17);
-gfx_w < 220 ? dyn_font_sz = min(dyn_font_sz, 13);
-// Vincola il font all'altezza del pannello (max 45% dell'altezza) per evitare rotture grafiche
-dyn_font_sz = min(dyn_font_sz, floor(base_h * 0.45));
-dyn_font_sz < 9 ? dyn_font_sz = 9; // Limite minimo di leggibilità assoluta
+// Ensure button height accommodates font size
+min_btn_h = f_sz_norm + 4;
+ui_btn_h = max(ui_btn_h, min_btn_h);
+ui_btn_h = min(ui_btn_h, max(floor(32 * scale), min_btn_h));
+
+// Logic for dyn_font_sz
+dyn_font_sz = f_sz_meter;
+dyn_font_sz = min(dyn_font_sz, floor(panel_h_reg * 0.80)); 
+dyn_font_sz = max(dyn_font_sz, 9);
+
+gfx_setfont(1, "Arial", dyn_font_sz);
 
 panel_h = panel_h_tp;
 
@@ -905,12 +1022,13 @@ lufs_overs = lufs_read_db - lufs_limit;
 lufs_overs < 0 ? lufs_overs = 0;
 
 
-label_w = 96;
-value_w = 78;
-meter_pad_x = 10;
-meter_bar_h = 16;
+label_w = floor(96 * scale);
+value_w = floor(78 * scale);
+meter_pad_x = floor(10 * scale);
+// meter_bar_h handled in UpdateLayout
 
-Panel(x0, y, row_w, panel_h, "TRUE PEAK");
+title_tp = compact_mode ? "TP" : "TRUE PEAK";
+Panel(x0, y, row_w, panel_h, title_tp);
 row1_y = y + panel_title_h;
 meter_x = x0 + meter_pad_x;
 meter_w = row_w - meter_pad_x*2;
@@ -918,7 +1036,10 @@ bar_x = meter_x;
 bar_w = meter_w;
 bar_w < 1 ? bar_w = 1;
 
-bar_y = row1_y + 22;
+// Layout Logic: Anchor BAR to TOP, TEXT to CENTER/BOTTOM.
+avail_h_inner = panel_h - panel_title_h - pad;
+bar_y = row1_y + floor(avail_h_inner * 0.25);
+
 SetColor(0.10, 0.10, 0.10, 1);
 DrawBox(bar_x, bar_y, bar_w, meter_bar_h, 1);
 
@@ -931,7 +1052,7 @@ loop(ticks_n,
   gfx_line(tx, bar_y, tx, bar_y + meter_bar_h);
   (tick_db == peak_min_db || tick_db == -48 || tick_db == -36 || tick_db == -24 || tick_db == -12 || tick_db == -6 || tick_db == 0 || tick_db == peak_max_db) ? (
     SetColor(1, 1, 1, 0.55);
-    gfx_setfont(1, "Arial", 10);
+    gfx_setfont(1, "Arial", f_sz_small);
     sprintf(#tstr, "%+.0f", tick_db);
     gfx_measurestr(#tstr, __tw, __th);
     gfx_x = tx - __tw*0.5;
@@ -975,12 +1096,20 @@ w_r > 0 ? (
 );
 
 tp_db > tp_limit ? SetColor(1, 0.25, 0.25, 1) : SetColor(0.9, 0.9, 0.9, 1);
-tp_value_y = bar_y + meter_bar_h + 6;
+
+// Dynamic Text Positioning
+// Anchor text below the bar, centered in the remaining space
+tp_value_y = bar_y + meter_bar_h + floor((avail_h_inner - (bar_y - row1_y) - meter_bar_h - dyn_font_sz)*0.5);
+
+// Fail-safe: If calculated Y pushes text off panel, clamp it
+max_text_y = y + panel_h - dyn_font_sz - floor(4 * scale);
+tp_value_y = min(tp_value_y, max_text_y);
+
 tp_font = dyn_font_sz;
 gfx_setfont(1, "Arial", tp_font);
 sprintf(#pstr, "%+.1f dB", tp_db);
 gfx_measurestr(#pstr, tp_tw, tp_th);
-tp_tw > meter_w - 4 ? (
+tp_tw > meter_w - floor(4 * scale) ? (
   sprintf(#pstr, "%+.1f", tp_db);
   gfx_measurestr(#pstr, tp_tw, tp_th);
 );
@@ -1003,7 +1132,7 @@ gfx_measurestr(#max_val_str, max_val_w, max_val_h);
 max_x = meter_x;
 max_y = tp_value_y + (tp_th - max_val_h)/2; 
 
-hover_max = mouse_x >= max_x && mouse_x <= max_x + max_lbl_w + 4 + max_val_w && mouse_y >= max_y && mouse_y <= max_y + max_val_h;
+hover_max = mouse_x >= max_x && mouse_x <= max_x + max_lbl_w + floor(4 * scale) + max_val_w && mouse_y >= max_y && mouse_y <= max_y + max_val_h;
 
 mouse_click && hover_max ? (
   tp_max_peak = 0;
@@ -1022,29 +1151,31 @@ gfx_y = max_y;
 gfx_drawstr(#max_lbl);
 
 tp_max_db_val > tp_limit ? SetColor(1, 0.25, 0.25, 1) : SetColor(1, 1, 1, hover_max ? 1.0 : 0.9);
-gfx_x += 4;
+gfx_x += floor(4 * scale);
 gfx_drawstr(#max_val_str);
 
-y += panel_h + panel_gap;
+y += panel_h + gap;
 
 panel_h = panel_h_reg;
-Panel(x0, y, row_w, panel_h, "LUFS METER");
+title_lufs = compact_mode ? "LUFS" : "LUFS METER";
+Panel(x0, y, row_w, panel_h, title_lufs);
 row2_y = y + panel_title_h;
 meter_x = x0 + meter_pad_x;
 meter_w = row_w - meter_pad_x*2;
-btn_h = min(16, panel_title_h - 6);
-btn_w = min(110, max(44, floor(meter_w * 0.34)));
-btn_x = x0 + row_w - 6 - btn_w;
-btn_y = y + 3;
+btn_h = panel_title_h - 4;
+btn_w = min(floor(110 * scale), max(24, max(floor(44 * scale), floor(meter_w * 0.34))));
+btn_x = x0 + row_w - floor(6 * scale) - btn_w;
+btn_y = y + (panel_title_h - btn_h) / 2;
 
-gfx_setfont(1, "Arial", 10);
-sprintf(#lufs_btn, "RESET LUFS");
-gfx_measurestr(#lufs_btn, __tw, __th);
-__tw > btn_w - 12 ? (
+gfx_setfont(1, "Arial", f_sz_small);
+// Use short label "RST" on small screens (< 0.55 scale)
+(compact_mode && scale < 0.55) ? (
+  sprintf(#lufs_btn, "RST");
+) : (
   sprintf(#lufs_btn, "RESET");
   gfx_measurestr(#lufs_btn, __tw, __th);
+  __tw > btn_w - floor(12 * scale) ? sprintf(#lufs_btn, "RST");
 );
-__tw > btn_w - 12 ? sprintf(#lufs_btn, "RST");
 
 Button(btn_x, btn_y, btn_w, btn_h, #lufs_btn, 0) ? (
   lufs_sum = 0;
@@ -1079,21 +1210,41 @@ bar_w = meter_w;
 bar_w < 1 ? bar_w = 1;
 
 SetColor(1, 1, 1, 0.45);
-gfx_setfont(1, "Arial", 10);
+gfx_setfont(1, "Arial", f_sz_small);
 sprintf(#limstr2, "LIM %+.1f", lufs_s_limit_db);
 gfx_x = meter_x;
-gfx_y = row2_y + 2;
+gfx_y = row2_y + floor(2 * scale);
 gfx_drawstr(#limstr2);
 
-bar_y = y + panel_h - meter_bar_h - 8;
-vals_font = dyn_font_sz;
-gfx_setfont(1, "Arial", vals_font);
-gfx_measurestr("ST -inf LUFS", __tw, vals_h);
-vals_y = row2_y + 2 + vals_h + 6;
-vals_y + vals_h + 6 > bar_y ? (
-  vals_y = bar_y - vals_h - 6;
-);
-vals_y < row2_y + 14 ? vals_y = row2_y + 14;
+// Dynamic layout
+    vals_font = dyn_font_sz;
+    gfx_setfont(1, "Arial", f_sz_small); // Measure LIM height
+    gfx_measurestr("LIM", __tw, lim_h);
+    
+    gfx_setfont(1, "Arial", vals_font); // Restore vals font
+    gfx_measurestr("ST -inf LUFS", __tw, vals_h);
+
+    // Constraints
+    min_top_y = row2_y + floor(2 * scale) + lim_h + floor(2 * scale); 
+    min_bot_pad = floor(4 * scale); 
+    gap_text_bar = floor(4 * scale);
+
+    // Ideal Layout
+    bar_y = y + panel_h - meter_bar_h - floor(8 * scale);
+    vals_y = bar_y - vals_h - gap_text_bar;
+
+    // Collision Resolution
+    vals_y < min_top_y ? (
+      vals_y = min_top_y;
+      bar_y = vals_y + vals_h + gap_text_bar;
+      
+      // Clamp Bar Height if needed
+      max_bar_y = y + panel_h - min_bot_pad;
+      (bar_y + meter_bar_h > max_bar_y) ? (
+        avail_h = max_bar_y - bar_y;
+        meter_bar_h = max(4, avail_h); 
+      );
+    );
 
 lufs_valid ? (
   lufs_s_db < -99 ? sprintf(#lufs_st_str, "ST -inf") : sprintf(#lufs_st_str, "ST %+.1f", lufs_s_db);
@@ -1131,11 +1282,11 @@ loop(ticks_n,
   gfx_line(tx, bar_y, tx, bar_y + meter_bar_h);
   (tick_db == lufs_min_db || tick_db == -24 || tick_db == -18 || tick_db == -12 || tick_db == -6 || tick_db == lufs_max_db) ? (
     SetColor(1, 1, 1, 0.55);
-    gfx_setfont(1, "Arial", 10);
+    gfx_setfont(1, "Arial", f_sz_small);
     sprintf(#tstr, "%+.0f", tick_db);
     gfx_measurestr(#tstr, __tw, __th);
     gfx_x = tx - __tw*0.5;
-    bar_y > vals_y + vals_h + __th + 6 ? (
+    bar_y > vals_y + vals_h + __th + floor(6 * scale) ? (
       gfx_y = bar_y - __th - 1;
       gfx_drawstr(#tstr);
     );
@@ -1178,16 +1329,18 @@ lufs_valid ? (
   );
 );
 
-y += panel_h + panel_gap;
+y += panel_h + gap;
 
-Panel(x0, y, row_w, panel_h, "PHASE CORRELATION");
+title_phase = compact_mode ? "PHASE" : "PHASE CORRELATION";
+Panel(x0, y, row_w, panel_h, title_phase);
 
-pc_view_btn_h = min(16, panel_title_h - 6);
-pc_view_btn_w = 70;
-pc_view_btn_x = x0 + row_w - 6 - pc_view_btn_w;
-pc_view_btn_y = y + 3;
+pc_view_btn_h = panel_title_h - 4;
+pc_view_btn_w = floor(70 * scale);
+pc_view_btn_x = x0 + row_w - floor(6 * scale) - pc_view_btn_w;
+pc_view_btn_y = y + (panel_title_h - pc_view_btn_h) / 2;
 
-phase_view_mode == 0 ? sprintf(#view_str, "MODE: BAR") : sprintf(#view_str, "MODE: MULTI");
+mode_lbl = compact_mode ? (phase_view_mode == 0 ? "BAR" : "MUL") : (phase_view_mode == 0 ? "MODE: BAR" : "MODE: MULTI");
+sprintf(#view_str, "%s", mode_lbl);
 
 Button(pc_view_btn_x, pc_view_btn_y, pc_view_btn_w, pc_view_btn_h, #view_str, 0) ? (
   phase_view_mode = 1 - phase_view_mode;
@@ -1195,24 +1348,41 @@ Button(pc_view_btn_x, pc_view_btn_y, pc_view_btn_w, pc_view_btn_h, #view_str, 0)
   slider_automate(slider13);
 );
 
-pc_pad = 10;
+pc_pad = pad;
 pc_x = x0 + pc_pad;
 pc_w = row_w - pc_pad*2;
 pc_w < 1 ? pc_w = 1;
 
-pc_btn_h = ui_btn_h;
-pc_btn_y = y + panel_h - pc_btn_h - 10;
+pc_btn_h = btn_ui_h;
+pc_btn_y = y + panel_h - pc_btn_h - pad;
 pc_btn_w = (pc_w - gap) * 0.5;
-pc_btn_w < 10 ? pc_btn_w = 10;
+pc_btn_w < floor(10 * scale) ? pc_btn_w = floor(10 * scale);
+// Button height: 16px (small) or 24px (standard)
+min_h = (scale < 0.55) ? 16 : 24;
+pc_btn_h < min_h ? (
+  pc_btn_h = min_h;
+  pc_btn_y = y + panel_h - pc_btn_h - pad; // Re-adjust Y position
+);
 pc_btn_x_l = pc_x;
 pc_btn_x_r = pc_x + pc_btn_w + gap;
 
 phase_view_mode == 0 ? (
-  bar_x = pc_x;
-  bar_w = pc_w;
-  bar_h = 14;
-  bar_y = y + panel_title_h + 8;
-  bar_w < 1 ? bar_w = 1;
+  // Centered bar layout
+  gfx_setfont(1, "Arial", f_sz_small);
+  gfx_measurestr("-1", tw_m1, th_m1);
+  gfx_measurestr("+1", tw_p1, th_p1);
+  label_margin = max(tw_m1, tw_p1) + floor(8 * scale);
+
+  bar_w = pc_w - (label_margin * 2);
+  bar_w < 10 ? bar_w = 10; // Minimum width
+  
+  bar_x = pc_x + (pc_w - bar_w) * 0.5;
+  bar_h = floor(14 * scale);
+  
+  // Center the bar vertically between Title and Bottom Buttons
+  avail_top = y + panel_title_h;
+  avail_bot = pc_btn_y; 
+  bar_y = avail_top + (avail_bot - avail_top - bar_h) * 0.5;
 
   gfx_gradrect(bar_x, bar_y, bar_w, bar_h, 1, 0, 0, 0.2, -1/bar_w, 1/bar_w, 0, 0);
   SetColor(1, 1, 1, 0.10);
@@ -1228,14 +1398,12 @@ phase_view_mode == 0 ? (
   );
 
   SetColor(1, 1, 1, 0.55);
-  gfx_setfont(1, "Arial", 10);
-  gfx_measurestr("-1", __tw, __th);
-  gfx_x = bar_x - __tw - 6;
-  gfx_y = bar_y + (bar_h - __th) * 0.5;
+  // Labels aae noels frnow safe
+  gfx_x = bar_x - tw_m1 - floor(4 * scale);
+  gfx_y = bar_y + (bar_h - th_m1) * 0.5;
   gfx_drawstr("-1");
-  gfx_measurestr("+1", __tw, __th);
-  gfx_x = bar_x + bar_w + 6;
-  gfx_y = bar_y + (bar_h - __th) * 0.5;
+  gfx_x = bar_x + bar_w + floor(4 * scale);
+  gfx_y = bar_y + (bar_h - th_p1) * 0.5;
   gfx_drawstr("+1");
 
   c_val = corr_smooth;
@@ -1247,17 +1415,21 @@ phase_view_mode == 0 ? (
                (cr = 0.90; cg = 0.50; cb = 0.20;);
   SetColor(cr, cg, cb, 1);
   marker_x = bar_x + (bar_w*0.5) + (c_val * (bar_w*0.5));
-  DrawBox(marker_x - 3, bar_y - 2, 6, bar_h + 4, 1);
+  DrawBox(marker_x - floor(3 * scale), bar_y - floor(2 * scale), floor(6 * scale), bar_h + floor(4 * scale), 1);
 
   sprintf(#corr_val, "%+.2f", corr_smooth);
+  
+  // Use larger font for value
+  gfx_setfont(1, "Arial", dyn_font_sz); 
+  
   gfx_measurestr(#corr_val, cw, ch);
-  gfx_x = bar_x + bar_w - cw; gfx_y = bar_y - ch - 2;
+  gfx_x = bar_x + bar_w - cw; gfx_y = bar_y - ch - floor(2 * scale);
   SetColor(1,1,1,0.6); gfx_drawstr(#corr_val);
 ) : (
   mb_x = pc_x;
   mb_w = pc_w;
-  mb_y = y + panel_title_h + 4;
-  mb_h = pc_btn_y - mb_y - 4; 
+  mb_y = y + panel_title_h + floor(4 * scale);
+  mb_h = pc_btn_y - mb_y - floor(4 * scale); 
   mb_w < 1 ? mb_w = 1;
   mb_h < 1 ? mb_h = 1;
 
@@ -1324,24 +1496,31 @@ phase_view_mode == 0 ? (
   );
 );
 
-Button(pc_btn_x_l, pc_btn_y, pc_btn_w, pc_btn_h, "SOLO MID", ui_monitor_mode == 1) ? (
+// Shorten labels on small screens
+lbl_mid = (compact_mode && scale < 0.55) ? "MID" : "SOLO MID";
+lbl_side = (compact_mode && scale < 0.55) ? "SIDE" : "SOLO SIDE";
+
+Button(pc_btn_x_l, pc_btn_y, pc_btn_w, pc_btn_h, lbl_mid, ui_monitor_mode == 1) ? (
   ui_monitor_mode == 1 ? (ui_monitor_mode = 0; slider1 = 0; monitor_mode = 0;) : (ui_monitor_mode = 1; slider1 = 1; monitor_mode = 1;);
   slider_automate(slider1);
 );
-Button(pc_btn_x_r, pc_btn_y, pc_btn_w, pc_btn_h, "SOLO SIDE", ui_monitor_mode == 2) ? (
+Button(pc_btn_x_r, pc_btn_y, pc_btn_w, pc_btn_h, lbl_side, ui_monitor_mode == 2) ? (
   ui_monitor_mode == 2 ? (ui_monitor_mode = 0; slider1 = 0; monitor_mode = 0;) : (ui_monitor_mode = 2; slider1 = 2; monitor_mode = 2;);
   slider_automate(slider1);
 );
 
 y += panel_h + panel_gap;
 
-Panel(x0, y, row_w, panel_h, "OSCILLOSCOPE");
+// Hide Oscilloscope if scale < 0.55
+(scale >= 0.55) ? (
+  title_scope = compact_mode ? "SCOPE" : "OSCILLOSCOPE";
+Panel(x0, y, row_w, panel_h, title_scope);
 
-btn_w = 24;
-btn_h = 16;
+btn_w = max(24, floor(24 * scale)); // Minimum width 24px
+btn_h = panel_title_h - 4;
 btn_y = y + (panel_title_h - btn_h) / 2;
 btn_x_r = x0 + row_w - panel_pad - btn_w;
-btn_x_l = btn_x_r - btn_w - 4;
+btn_x_l = btn_x_r - btn_w - floor(4 * scale);
 
 Button(btn_x_l, btn_y, btn_w, btn_h, "L", scope_show_l) ? (
   scope_show_l = 1 - scope_show_l;
@@ -1351,9 +1530,9 @@ Button(btn_x_r, btn_y, btn_w, btn_h, "R", scope_show_r) ? (
 );
 
 plot_x = x0 + panel_pad;
-plot_y = y + panel_title_h + 2;
+plot_y = y + panel_title_h + floor(2 * scale);
 plot_w = row_w - panel_pad*2;
-plot_h = panel_h - panel_title_h - 26;
+plot_h = panel_h - panel_title_h - floor(26 * scale);
 plot_w < 1 ? plot_w = 1;
 plot_h < 1 ? plot_h = 1;
 mid_y0 = plot_y + plot_h/2;
@@ -1452,24 +1631,26 @@ scope_n > 1 ? (
 );
 
 SetColor(1, 1, 1, 0.55);
-gfx_setfont(1, "Arial", 10);
+gfx_setfont(1, "Arial", f_sz_small);
 sec = 0;
 loop(ceil(scope_view_seconds) + 1,
   tx = plot_x + (sec / scope_view_seconds) * plot_w;
   sprintf(#tsec, "%.1fs", sec - scope_view_seconds);
   gfx_measurestr(#tsec, __tw, __th);
   gfx_x = tx - __tw*0.5;
-  gfx_y = plot_y + plot_h + 4;
+  gfx_y = plot_y + plot_h + floor(4 * scale);
   tx <= plot_x + plot_w ? gfx_drawstr(#tsec);
   sec += 1;
 );
 
-y += panel_h + panel_gap;
+  y += panel_h + panel_gap;
+);
 
-Panel(x0, y, row_w, panel_h, "STEREO ANALYZER");
+title_stereo = compact_mode ? "STEREO" : "STEREO ANALYZER";
+Panel(x0, y, row_w, panel_h, title_stereo);
 
 gonio_x = x0 + panel_pad;
-gonio_y = y + panel_title_h + 2;
+gonio_y = y + panel_title_h + floor(2 * scale);
 gonio_w = row_w - panel_pad*2;
 gonio_h2 = panel_h - panel_title_h - panel_pad;
 gonio_w < 1 ? gonio_w = 1;
@@ -1530,16 +1711,19 @@ gfx_line(gonio_x, gonio_y + gonio_h2/2, gonio_x + gonio_w, gonio_y + gonio_h2/2)
 
 y += panel_h + panel_gap;
 
-panel_h = panel_h_reg + 28; // Increased height for toolbar
-Panel(x0, y, row_w, panel_h, "SPECTRUM ANALYZER");
+panel_h = panel_h_spec;
+// Hide title on small screens (scale < 0.55) to maximize graph area
+hide_title_mpc = (compact_mode && scale < 0.55);
+title_spec = hide_title_mpc ? "" : (compact_mode ? "SPEC" : "SPECTRUM ANALYZER");
+Panel(x0, y, row_w, panel_h, title_spec);
 
-// Toolbar area
-toolbar_h = 24;
-tb_y = y + panel_title_h;
+// Toolbar area (height defined in UpdateLayout)
+eff_title_h = hide_title_mpc ? floor(2 * scale) : panel_title_h;
+tb_y = y + eff_title_h;
 
-// Button "F" (Freeze) - Right aligned in group
-btn_w_s = 20; 
-btn_h_s = 16; // Slightly smaller height
+// Button "F" (Freeze)
+btn_w_s = floor(20 * scale); 
+btn_h_s = floor(16 * scale); 
 btn_x_s = x0 + row_w - panel_pad - btn_w_s; 
 btn_y_s = tb_y + (toolbar_h - btn_h_s)/2;
 
@@ -1549,88 +1733,102 @@ Button(btn_x_s, btn_y_s, btn_w_s, btn_h_s, "F", spec_freeze) ? (
 );
 
 // Smoothing Selector
-btn_w_sm = 50;
-btn_x_sm = btn_x_s - btn_w_sm - 6;
+btn_w_sm = compact_mode ? max(24, floor(30 * scale)) : floor(50 * scale);
+btn_x_sm = btn_x_s - btn_w_sm - floor(6 * scale);
 s11_int = floor(spec_smooth_mode + 0.5);
 sm_lbl = s11_int == 0 ? "1/3" : s11_int == 1 ? "1/12" : "1/24";
+// In compact mode, shorten
+compact_mode ? (
+  sm_lbl = s11_int == 0 ? "1/3" : s11_int == 1 ? "12" : "24";
+);
+
 Button(btn_x_sm, btn_y_s, btn_w_sm, btn_h_s, sm_lbl, 0) ? (
   spec_smooth_mode = (s11_int + 1) % 3;
   slider_automate(spec_smooth_mode);
 );
 
 // Averaging Selector (AVG)
-btn_w_avg = 40;
-btn_x_avg = btn_x_sm - btn_w_avg - 6;
+btn_w_avg = compact_mode ? max(24, floor(30 * scale)) : floor(40 * scale);
+btn_x_avg = btn_x_sm - btn_w_avg - floor(6 * scale);
 s7_int = floor(spec_avg_mode + 0.5);
 avg_lbl = s7_int == 0 ? "NORM" : s7_int == 1 ? "SLOW" : "AVG";
+compact_mode ? (
+  avg_lbl = s7_int == 0 ? "NRM" : s7_int == 1 ? "SLW" : "AVG";
+);
+
 Button(btn_x_avg, btn_y_s, btn_w_avg, btn_h_s, avg_lbl, s7_int == 2) ? (
   spec_avg_mode = (s7_int + 1) % 3;
   slider_automate(spec_avg_mode);
 );
 
 // M/S Selector
-btn_w_ms = 36;
-btn_x_ms = btn_x_avg - btn_w_ms - 6;
+btn_w_ms = compact_mode ? max(24, floor(26 * scale)) : floor(36 * scale);
+btn_x_ms = btn_x_avg - btn_w_ms - floor(6 * scale);
 ms_lbl = spec_mode_ms == 0 ? "ST" : "M/S";
 Button(btn_x_ms, btn_y_s, btn_w_ms, btn_h_s, ms_lbl, spec_mode_ms == 1) ? (
   spec_mode_ms = 1 - spec_mode_ms;
   slider_automate(spec_mode_ms);
 );
 
-// Slope Slider (Moved to Title Bar)
-slope_lbl_w = 0; 
-slope_slider_w = 60;
-
-// Position in Title Bar (Right Aligned)
-// x0 is panel left, row_w is panel width, y is panel top
-sl_bar_w = slope_slider_w;
-sl_bar_h = 16;
-sl_bar_x = x0 + row_w - panel_pad - sl_bar_w;
-sl_bar_y = y + (panel_title_h - sl_bar_h)/2;
-
-// Interaction
-mouse_cap == 1 && mouse_x >= sl_bar_x && mouse_x < sl_bar_x + sl_bar_w && mouse_y >= y && mouse_y < y + panel_title_h ? (
-   val = (mouse_x - sl_bar_x) / sl_bar_w;
-   val = Clamp(val, 0, 1);
-   spec_slope_db = val * 6.0;
-   slider_automate(spec_slope_db);
+// Slope Slider (Extended Mode only)
+compact_mode == 0 ? (
+  slope_lbl_w = 0; 
+  slope_slider_w = floor(60 * scale);
+  
+  sl_bar_w = slope_slider_w;
+  sl_bar_h = floor(16 * scale);
+  sl_bar_x = x0 + row_w - panel_pad - sl_bar_w;
+  sl_bar_y = y + (panel_title_h - sl_bar_h)/2;
+  
+  // Interaction logic
+  mouse_cap == 1 && mouse_x >= sl_bar_x && mouse_x < sl_bar_x + sl_bar_w && mouse_y >= y && mouse_y < y + panel_title_h ? (
+     val = (mouse_x - sl_bar_x) / sl_bar_w;
+     val = Clamp(val, 0, 1);
+     spec_slope_db = val * 6.0;
+     slider_automate(spec_slope_db);
+  );
+  
+  mouse_cap == 2 && last_mouse_cap == 0 && mouse_x >= sl_bar_x && mouse_x < sl_bar_x + sl_bar_w && mouse_y >= y && mouse_y < y + panel_title_h ? (
+      abs(spec_slope_db - 0.0) < 0.1 ? spec_slope_db = 3.0 :
+      abs(spec_slope_db - 3.0) < 0.1 ? spec_slope_db = 4.5 :
+      abs(spec_slope_db - 4.5) < 0.1 ? spec_slope_db = 0.0 :
+      spec_slope_db = 4.5; 
+      slider_automate(spec_slope_db);
+  );
+  
+  SetColor(0.2, 0.2, 0.22, 1);
+  gfx_rect(sl_bar_x, sl_bar_y, sl_bar_w, sl_bar_h);
+  SetColor(0.3, 0.3, 0.35, 1);
+  gfx_rect(sl_bar_x+1, sl_bar_y+1, sl_bar_w-2, sl_bar_h-2);
+  
+  fill_w = (spec_slope_db / 6.0) * sl_bar_w;
+  SetColor(0.15, 0.55, 0.35, 0.9);
+  gfx_rect(sl_bar_x+1, sl_bar_y+1, max(0, fill_w-2), sl_bar_h-2);
+  
+  SetColor(1, 1, 1, 0.9);
+  gfx_setfont(1, "Arial", f_sz_title);
+  sprintf(#sl_val, "%.1f", spec_slope_db);
+  gfx_measurestr(#sl_val, sv_w, sv_h);
+  gfx_x = sl_bar_x + sl_bar_w/2 - sv_w/2;
+  gfx_y = sl_bar_y + (sl_bar_h - sv_h)/2; 
+  gfx_drawstr(#sl_val);
 );
 
-// Right click for snaps
-mouse_cap == 2 && last_mouse_cap == 0 && mouse_x >= sl_bar_x && mouse_x < sl_bar_x + sl_bar_w && mouse_y >= y && mouse_y < y + panel_title_h ? (
-    abs(spec_slope_db - 0.0) < 0.1 ? spec_slope_db = 3.0 :
-    abs(spec_slope_db - 3.0) < 0.1 ? spec_slope_db = 4.5 :
-    abs(spec_slope_db - 4.5) < 0.1 ? spec_slope_db = 0.0 :
-    spec_slope_db = 4.5; 
-    slider_automate(spec_slope_db);
-);
+  // Dynamic Plot X based on label width
+  // Hide Y-axis values on small screens (scale < 0.55) to maximize width
+  hide_y_labels = (compact_mode && scale < 0.55);
 
-// Draw Slider
-SetColor(0.2, 0.2, 0.22, 1);
-gfx_rect(sl_bar_x, sl_bar_y, sl_bar_w, sl_bar_h);
-SetColor(0.3, 0.3, 0.35, 1);
-gfx_rect(sl_bar_x+1, sl_bar_y+1, sl_bar_w-2, sl_bar_h-2);
-
-fill_w = (spec_slope_db / 6.0) * sl_bar_w;
-SetColor(0.15, 0.55, 0.35, 0.9);
-gfx_rect(sl_bar_x+1, sl_bar_y+1, max(0, fill_w-2), sl_bar_h-2);
-
-// Value Text
-SetColor(1, 1, 1, 0.9);
-gfx_setfont(1, "Arial", 14);
-sprintf(#sl_val, "%.1f", spec_slope_db);
-gfx_measurestr(#sl_val, sv_w, sv_h);
-gfx_x = sl_bar_x + sl_bar_w/2 - sv_w/2;
-gfx_y = sl_bar_y + (sl_bar_h - sv_h)/2; 
-gfx_drawstr(#sl_val);
-
-plot_x = x0 + panel_pad;
-plot_y = y + panel_title_h + toolbar_h;
-plot_w = row_w - panel_pad*2;
-readout_h_dyn = max(20, dyn_font_sz + 6);
-plot_h = panel_h - panel_title_h - toolbar_h - panel_pad - readout_h_dyn - 4; 
-plot_w < 1 ? plot_w = 1;
-plot_h < 1 ? plot_h = 1;
+  gfx_setfont(1, "Arial", f_sz_small);
+  gfx_measurestr("-90", tw_db, th_db);
+  
+  plot_x_offset = hide_y_labels ? floor(2 * scale) : tw_db + floor(8 * scale);
+  plot_x = x0 + plot_x_offset;
+  
+  plot_y = y + eff_title_h + toolbar_h;
+  plot_w = row_w - (plot_x - x0) - panel_pad; // Adjust width based on new plot_x
+  plot_h = panel_h - eff_title_h - toolbar_h - panel_pad - floor(4 * scale); 
+  plot_w < 1 ? plot_w = 1;
+  plot_h < 1 ? plot_h = 1;
 
 db_min = -90;
 db_max = 0;
@@ -1646,24 +1844,35 @@ lf_den <= 0 ? lf_den = 1;
 
 SetColor(1, 1, 1, 0.10);
 tick_db = db_max;
+  
+// Dynamic Grid Step: ensure at least 15px between labels
+px_per_db = plot_h / (db_max - db_min); 
+step_db = 6;
+loop(5,
+  (step_db * abs(px_per_db)) < (15 * scale) ? step_db += 6;
+);
+
 guard = 0;
 while(tick_db >= db_min && guard < 100) (
   ty = plot_y + (1 - (tick_db - db_min) / (db_max - db_min)) * plot_h;
   gfx_line(plot_x, ty, plot_x + plot_w, ty);
-  SetColor(1, 1, 1, 0.55);
-  gfx_setfont(1, "Arial", 10);
-  sprintf(#dbs, "%+.0f", tick_db);
-  gfx_measurestr(#dbs, __tw, __th);
-  gfx_x = plot_x + 2;
-  gfx_y = ty - __th - 1;
-  gfx_drawstr(#dbs);
-  SetColor(1, 1, 1, 0.10);
-  tick_db -= 12;
+  
+  !hide_y_labels ? (
+    SetColor(1, 1, 1, 0.55);
+    gfx_setfont(1, "Arial", f_sz_small);
+    sprintf(#dbs, "%+.0f", tick_db);
+    gfx_measurestr(#dbs, __tw, __th);
+    gfx_x = plot_x - __tw - 4; // Align right to plot_x
+    gfx_y = ty - __th/2; // Center vertically
+    gfx_drawstr(#dbs);
+    SetColor(1, 1, 1, 0.10);
+  );
+  tick_db -= step_db;
   guard += 1;
 );
 
 SetColor(1, 1, 1, 0.10);
-gfx_setfont(1, "Arial", 10);
+gfx_setfont(1, "Arial", f_sz_small);
 f = 20;
 guard = 0;
 while(f <= f_max + 0.5 && guard < 200) (
@@ -1673,7 +1882,7 @@ while(f <= f_max + 0.5 && guard < 200) (
     SetColor(1, 1, 1, 0.55);
     f >= 1000 ? sprintf(#fs, "%dk", floor(f/1000)) : sprintf(#fs, "%d", f);
     gfx_x = fx + 2;
-    gfx_y = plot_y + plot_h - 12;
+    gfx_y = plot_y + plot_h - floor(12 * scale);
     gfx_drawstr(#fs);
     SetColor(1, 1, 1, 0.10);
   );
@@ -1728,9 +1937,6 @@ spec_mode_ms ? (
   DrawSpectrumGraph(spec_peak_s, 0.2, 0.8, 0.9, 0.4, 1, 0, 1);
 );
 
-readout_y = plot_y + plot_h + 6;
-readout_h = readout_h_dyn;
-
 spec_hover = mouse_x >= plot_x && mouse_x < plot_x + plot_w && mouse_y >= plot_y && mouse_y < plot_y + plot_h;
 spec_hover ? (
   SetColor(1, 1, 1, 0.16);
@@ -1754,13 +1960,9 @@ spec_hover ? (
     db_pk += tilt;
   );
 
-  sprintf(#spec_read, "%.0f Hz  %+.1f dB  PK %+.1f", f, db, db_pk);
-  SetColor(1, 1, 1, 0.80);
-  gfx_setfont(1, "Arial", dyn_font_sz);
-  gfx_measurestr(#spec_read, __tw, __th);
-  gfx_x = plot_x;
-  gfx_y = readout_y + (readout_h - __th) / 2;
-  gfx_drawstr(#spec_read);
+  // Tooltip (Deferred Drawing)
+  sprintf(#tooltip_str, "%.0f Hz  %+.1f dB  PK %+.1f", f, db, db_pk);
+  draw_tooltip = 1;
 );
 
 mouse_click && mouse_x >= plot_x && mouse_x < plot_x + plot_w && mouse_y >= plot_y && mouse_y < plot_y + plot_h ? (
@@ -1773,39 +1975,96 @@ mouse_click && mouse_x >= plot_x && mouse_x < plot_x + plot_w && mouse_y >= plot
 
 y += panel_h + panel_gap;
 
-panel_h = panel_h_reg;
+// MONITOR PANEL
+panel_h = panel_h_mon; // Use dedicated monitor height
 Panel(x0, y, row_w, panel_h, "MONITOR");
 btn_gap = gap;
 
 // Adjust button height for Monitor panel to fit signature
-sig_res_h = 16;
-avail_h_mon = panel_h - panel_title_h - 6 - sig_res_h;
+sig_res_h = floor(16 * scale);
+avail_h_mon = panel_h - panel_title_h - floor(6 * scale) - sig_res_h;
 btn_h = floor((avail_h_mon - gap) * 0.5);
-btn_h > 32 ? btn_h = 32;
-btn_h < 12 ? btn_h = 12;
+btn_h > floor(32 * scale) ? btn_h = floor(32 * scale);
+// Ensure button height is at least 24px (16px for small MPC screens)
+min_h = (scale < 0.55) ? 16 : 24;
+btn_h < min_h ? btn_h = min_h;
 
-btn_area_y = y + panel_title_h + 6;
+btn_area_y = y + panel_title_h + floor(6 * scale);
 btn_w2 = (row_w - btn_gap) / 2;
 bx = x0;
-Button(bx, btn_area_y, btn_w2, btn_h, "NORMAL", ui_monitor_mode == 0) ? (
+
+// Labels
+lbl_norm = compact_mode ? "NRM" : "NORMAL";
+lbl_dim  = compact_mode ? "DIM" : "-20 db";
+lbl_low  = compact_mode ? "LOW" : "LOW-END FOCUS";
+lbl_mid  = compact_mode ? "MID" : "MID / HIGH FOCUS";
+
+Button(bx, btn_area_y, btn_w2, btn_h, lbl_norm, ui_monitor_mode == 0) ? (
   ui_monitor_mode = 0; slider1 = 0; monitor_mode = 0;
   slider_automate(slider1);
 );
 bx += btn_w2 + btn_gap;
-Button(bx, btn_area_y, btn_w2, btn_h, "-20 db", ui_dim_active) ? (
+Button(bx, btn_area_y, btn_w2, btn_h, lbl_dim, ui_dim_active) ? (
   ui_dim_active = 1 - ui_dim_active; slider3 = ui_dim_active; dim_active = ui_dim_active;
   slider_automate(slider3);
 );
 
 bx = x0;
-Button(bx, btn_area_y + btn_h + gap, btn_w2, btn_h, "LOW-END FOCUS", ui_low_end_only) ? (
+Button(bx, btn_area_y + btn_h + gap, btn_w2, btn_h, lbl_low, ui_low_end_only) ? (
   ui_low_end_only = 1 - ui_low_end_only;
   ui_low_end_only ? ui_mid_high_focus = 0;
 );
 bx += btn_w2 + btn_gap;
-Button(bx, btn_area_y + btn_h + gap, btn_w2, btn_h, "MID / HIGH FOCUS", ui_mid_high_focus) ? (
+Button(bx, btn_area_y + btn_h + gap, btn_w2, btn_h, lbl_mid, ui_mid_high_focus) ? (
   ui_mid_high_focus = 1 - ui_mid_high_focus;
   ui_mid_high_focus ? ui_low_end_only = 0;
+);
+
+// Tooltip Layer (Always on top)
+draw_tooltip ? (
+  // Adaptive font size for tooltips (scale < 0.55)
+  tt_font_sz = (compact_mode && scale < 0.55) ? 11 : max(13, f_sz_norm + 2);
+  gfx_setfont(1, "Arial", tt_font_sz);
+  gfx_measurestr(#tooltip_str, tw, th);
+  
+  // Padding & Box Dimensions
+  pad_x = 8;
+  pad_y = 6;
+  box_w = tw + pad_x*2;
+  box_h = th + pad_y*2;
+  
+  // Initial Position: Top-Right relative to mouse
+  tx = mouse_x + 15;
+  ty = mouse_y - box_h - 10;
+  
+  // Horizontal Smart Logic: shift left if overflowing right edge
+  (tx + box_w > gfx_w) ? tx = mouse_x - box_w - 15;
+  // Fail-safe: Clamp X to screen bounds
+  tx = max(0, min(tx, gfx_w - box_w));
+
+  // Vertical Smart Logic: shift below mouse if overflowing top edge
+  (ty < 0) ? (
+    ty_bot = mouse_y + 20;
+    // If bottom position also fails, clamp to screen vertical bounds
+    (ty_bot + box_h > gfx_h) ? (
+        ty = max(0, min(ty_bot, gfx_h - box_h));
+    ) : (
+        ty = ty_bot;
+    );
+  );
+
+  // Final Fail-safe Clamp
+  ty = max(0, min(ty, gfx_h - box_h));
+  
+  // Draw Box
+  SetColor(0.1, 0.1, 0.1, 0.95);
+  gfx_rect(tx, ty, box_w, box_h);
+  
+  // Draw Text (Relative to Box)
+  SetColor(1, 1, 1, 1);
+  gfx_x = tx + pad_x; 
+  gfx_y = ty + pad_y;
+  gfx_drawstr(#tooltip_str);
 );
 
 last_mouse_cap = mouse_cap;

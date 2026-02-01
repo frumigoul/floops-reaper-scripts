@@ -35,7 +35,7 @@ It includes True Peak limiting/metering, LUFS metering, Spectrum Analysis, and P
 *   **Oscilloscope**: Real-time waveform visualization.
 *   **Monitor Control**: Dim (-20dB), Mono check, and Side monitoring.
 *   **Low/Mid/High Focus**: Solo bass (~120Hz LP) or mid/highs for checking balance.
-*   **Embedded UI**: Supports embedding in REAPER's MCP (Mixer Control Panel) and TCP.
+*   **Adaptive Embedded UI**: Smart scaling for REAPER's MCP (Mixer Control Panel), optimized for both laptop (15") and 4K screens.
 
 ## Requirements
 
@@ -97,9 +97,14 @@ To see the meters directly in the mixer without opening the window:
 ## Troubleshooting
 
 *   **High CPU**: The script is optimized, but high FFT sizes can be demanding. Reduce spectrum resolution if needed via sliders.
-*   **UI too small**: Adjust `Values Font Size` in the Config ("C") menu.
 
 ## Changelog
+
+### v1.1.0
+*   **Core UI Refactoring**: Rewrote rendering engine for native scalability across 4K monitors and laptops (tested on 27" and 15").
+*   **Adaptive MPC Layout**: Dynamic optimization of Embedded (MPC) mode. Automatically hides non-critical elements (Oscilloscope) on small screens to prevent overlaps.
+*   **Smart Scaling Logic**: Implemented adaptive threshold system (0.55) to ensure consistent readability of True Peak and LUFS parameters regardless of resolution.
+*   **UI Cleanup**: Removed redundant manual controls (font sliders) in favor of a smoother, professional auto-scaling system.
 
 ### v1.0.0
 *   Initial release with comprehensive metering suite.
