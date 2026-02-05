@@ -104,6 +104,9 @@ The script also displays the remaining repetitions.
 
 ## Changelog
 
+### v1.2 (2026-02-05)
+*   **Fix**: Solved crash with fractional Project BPM values.
+
 ### v1.1 (2025-01-07)
 *   **Restore BPM**: BPM restoration now guaranteed on force quit/crash.
 *   **Logic**: Improved loop detection algorithm for short loops.

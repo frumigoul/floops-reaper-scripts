@@ -1,15 +1,11 @@
 -- Floop Studio Trainer
 -- @description Floop Studio Trainer: practice your instrument inside Reaper.
--- @version 1.1
+-- @version 1.2
 -- @author Floop-s
 -- @license GPL v-3.0
 -- @changelog
---   v1.1 (2025-01-07)
---   - Restore BPM: BPM restoration now guaranteed on force quit/crash.
---   - Logic: Improved loop detection algorithm for short loops.
---   - Safety: Added limits to BPM and repetition values to prevent errors.
---   - UI: Scalable interface, refined styling, and clearer error messages.
---   - Fixes: Better handling of manual seeks and pauses.
+--   v1.2 (2026-02-05)
+--   - Fix: Solved crash with fractional Project BPM values.
 -- @about
 --    Floop Studio Trainer
 --   © 2025-2026 Floop-s
@@ -24,7 +20,7 @@
 
 
 
--- check if ReaImGui is installed
+-- Ensure ReaImGui dependency is available
 if not reaper.ImGui_CreateContext then
     reaper.ShowMessageBox("ReaImGui is not installed!\nPlease install ReaImGui Api package from ReaPack and try again.", "Error", 0)
     return
@@ -32,7 +28,7 @@ end
 
 local Trainer = {}
 
---reaimgui context
+-- Initialize ReaImGui context
 Trainer.ctx = reaper.ImGui_CreateContext("Loop Trainer")
 
 Trainer.num_repeats = 10
@@ -47,43 +43,43 @@ Trainer.restore_on_close = true -- Default setting
 Trainer.scale_factor = 1.0
 Trainer.font_size = 14
 
--- create a font
+-- Initialize UI font
 Trainer.sans_serif = reaper.ImGui_CreateFont("sans-serif", Trainer.font_size)
 reaper.ImGui_Attach(Trainer.ctx, Trainer.sans_serif)
 
--- variables to manage the loop
+-- Loop state variables
 Trainer.repeat_count = 0
 
--- function to update the font size
+-- Updates font size based on scale factor
 function Trainer.updateFont()
     local size = math.floor(16 * Trainer.scale_factor)
     Trainer.font_size = size
-    -- Create new font with updated size
+    -- Re-create font resource
     local new_font = reaper.ImGui_CreateFont("sans-serif", size)
     reaper.ImGui_Attach(Trainer.ctx, new_font)
     Trainer.sans_serif = new_font
 end
 
--- function to update the metronome state
+-- Syncs internal state with REAPER metronome
 function Trainer.updateMetronomeState()
     Trainer.metronome_active = (reaper.GetToggleCommandState(40364) == 1)
 end
 
--- Function to activate/deactivate the metronome
+-- Toggles REAPER metronome
 function Trainer.toggleMetronome()
     reaper.Main_OnCommand(40364, 0)  
     Trainer.updateMetronomeState()  
 end
 
--- Function to set the project BPM
+-- Applies target BPM to project
 function Trainer.setProjectBPM()
-    -- Validation for manual input
+    -- Clamp BPM range (10-960)
     if Trainer.project_bpm < 10 then Trainer.project_bpm = 10 end
     if Trainer.project_bpm > 960 then Trainer.project_bpm = 960 end
     reaper.SetCurrentBPM(0, Trainer.project_bpm, true)
 end
 
--- Function to close the script
+-- Restores original BPM if enabled
 function Trainer.cleanup()
     if Trainer.restore_on_close and Trainer.original_bpm then
         reaper.SetCurrentBPM(0, Trainer.original_bpm, false)
@@ -97,7 +93,7 @@ function Trainer.closeScript()
     Trainer.script_running = false  
 end
 
--- Preconditions check
+-- Validates loop selection and transport state
 function Trainer.checkConditions()
     local loop_start, loop_end = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
     if loop_start == loop_end then
@@ -116,7 +112,7 @@ function Trainer.checkConditions()
     return true 
 end
 
---start the loop
+-- Initializes training session
 function Trainer.startLoop()
     if Trainer.running then return end
     if not Trainer.checkConditions() then return end  
@@ -137,12 +133,10 @@ function Trainer.startLoop()
         local l_start, l_end = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
         local loop_len = l_end - l_start
 
-        -- Check loop with threshold to avoid false positives from BPM change seeks
-        -- More robust check: if we jumped backwards significantly (more than 20% of loop length)
-        -- AND we are near the start of the loop
+        -- Detect loop restart. Threshold prevents false positives during seek
         if current_position < last_position then
              local jump_dist = last_position - current_position
-             if jump_dist > (loop_len * 0.2) then -- reduced threshold from 0.5 to 0.2 for better detection of short loops
+             if jump_dist > (loop_len * 0.2) then -- Threshold: 20% of loop length
                 Trainer.repeat_count = Trainer.repeat_count + 1
                 Trainer.remaining_repeats = Trainer.num_repeats - Trainer.repeat_count  
                 
@@ -151,24 +145,22 @@ function Trainer.startLoop()
                     Trainer.remaining_repeats = Trainer.num_repeats  
                     local bpm = reaper.Master_GetTempo()
                     
-                    -- Safe clamp for BPM
+                    -- Clamp new BPM to REAPER limit
                     local new_bpm = bpm + Trainer.bpm_increment
-                    if new_bpm > 960 then new_bpm = 960 end -- Reaper max BPM
+                    if new_bpm > 960 then new_bpm = 960 end 
                     
                     reaper.SetCurrentBPM(0, new_bpm, true)
                     Trainer.project_bpm = new_bpm -- Update UI variable
                     
-                    -- Reset last_position to current (start of loop) instead of 0
+                    -- Update tracking position to current cursor
                     last_position = reaper.GetPlayPosition()
                     
-                    -- Wait a few frames to let the engine settle and cursor move
-                    -- This avoids false positives immediately after BPM change
-                    -- and solves issues with Timebase changes affecting position values
+                    -- Defer checks to allow audio engine/cursor update
                     local wait_frames = 0
                     local function safeWait()
                         if not Trainer.running then return end
                         wait_frames = wait_frames + 1
-                        if wait_frames > 5 then -- Wait approx 150ms
+                        if wait_frames > 5 then -- Debounce period (~150ms)
                              last_position = reaper.GetPlayPosition()
                              reaper.defer(checkLoop)
                         else
@@ -188,13 +180,13 @@ function Trainer.startLoop()
     reaper.defer(checkLoop)
 end
 
--- stop the script
+-- Stops playback and training session
 function Trainer.stopScript()
     Trainer.running = false
     reaper.CSurf_OnStop()
 end
 
--- Theme settings
+-- Applies ImGui style/theme
 function Trainer.applyTheme()
     local s = Trainer.scale_factor or 1.0
     reaper.ImGui_PushStyleVar(Trainer.ctx, reaper.ImGui_StyleVar_WindowRounding(), 9 * s)
@@ -221,7 +213,7 @@ function Trainer.applyTheme()
     reaper.ImGui_PushStyleColor(Trainer.ctx, reaper.ImGui_Col_ResizeGripActive(), 0x135E61FF) 
 end
 
--- Design the GUI                       
+-- Main GUI render loop
 function Trainer.loopTrainerGUI()
     if not Trainer.script_running then return end
     
@@ -248,7 +240,7 @@ function Trainer.loopTrainerGUI()
         reaper.ImGui_Text(Trainer.ctx, "Settings")
         reaper.ImGui_SameLine(Trainer.ctx)
 
-        -- Help button (?)
+        -- Render Help tooltip
         local help_text = "(?)"
         local help_w = reaper.ImGui_CalcTextSize(Trainer.ctx, help_text)
         reaper.ImGui_SetCursorPosX(Trainer.ctx, window_width - help_w - (15 * Trainer.scale_factor))
@@ -265,14 +257,12 @@ function Trainer.loopTrainerGUI()
         reaper.ImGui_Separator(Trainer.ctx)
         reaper.ImGui_Dummy(Trainer.ctx, 0, 10 * Trainer.scale_factor)
         
-        -- Sliders And Inputs   
-
-
+        -- Render Control Panel
         reaper.ImGui_Text(Trainer.ctx, "Number of repetitions")
         reaper.ImGui_SetNextItemWidth(Trainer.ctx, window_width - 40)
         local repeats_changed
         repeats_changed, Trainer.num_repeats = reaper.ImGui_SliderInt(Trainer.ctx, "##num_repeats", Trainer.num_repeats, 1, 30)
-        -- Clamp repetitions
+        -- Validate repetitions range
         if Trainer.num_repeats < 1 then Trainer.num_repeats = 1 end
         if Trainer.num_repeats > 100 then Trainer.num_repeats = 100 end
         
@@ -282,7 +272,7 @@ function Trainer.loopTrainerGUI()
         reaper.ImGui_Text(Trainer.ctx, "Increase BPM by")
         reaper.ImGui_SetNextItemWidth(Trainer.ctx, window_width - 40)
         _, Trainer.bpm_increment = reaper.ImGui_SliderInt(Trainer.ctx, "##bpm_increment", Trainer.bpm_increment, 1, 20)
-        -- Clamp increment
+        -- Validate increment range
         if Trainer.bpm_increment < 1 then Trainer.bpm_increment = 1 end
         if Trainer.bpm_increment > 50 then Trainer.bpm_increment = 50 end
 
@@ -296,13 +286,13 @@ function Trainer.loopTrainerGUI()
       reaper.ImGui_Text(Trainer.ctx, "Project BPM: press Enter to apply the new BPM.")
       reaper.ImGui_SetNextItemWidth(Trainer.ctx, window_width - 40)
       
-      -- Only update from master if we are not editing and script is not running logic updates
+      -- Sync UI BPM with Project BPM when idle
       if not reaper.ImGui_IsItemActive(Trainer.ctx) and not Trainer.running then
           Trainer.project_bpm = reaper.Master_GetTempo()
       end
 
       local changed
-      changed, Trainer.project_bpm = reaper.ImGui_InputInt(Trainer.ctx, "##project_bpm", Trainer.project_bpm)
+      changed, Trainer.project_bpm = reaper.ImGui_InputDouble(Trainer.ctx, "##project_bpm", Trainer.project_bpm, 0, 0, "%.2f")
       if changed or reaper.ImGui_IsItemDeactivatedAfterEdit(Trainer.ctx) then
           Trainer.setProjectBPM()
       end
@@ -311,7 +301,7 @@ function Trainer.loopTrainerGUI()
         reaper.ImGui_Separator(Trainer.ctx)
         reaper.ImGui_Dummy(Trainer.ctx, 0, 5)
 
-        -- Metronome button
+        -- Render Metronome toggle
         local metronome_text = Trainer.metronome_active and "Metronome: ON" or "Metronome: OFF"
         
         local available_width = reaper.ImGui_GetContentRegionAvail(Trainer.ctx)
@@ -326,15 +316,15 @@ function Trainer.loopTrainerGUI()
         reaper.ImGui_Text(Trainer.ctx, "Repetitions remaining: " .. Trainer.remaining_repeats)
         reaper.ImGui_Dummy(Trainer.ctx, 0, 10 * Trainer.scale_factor)
 
-        -- Ui start/stop/close buttons        
+        -- Render Transport controls        
         local spacing = 20 * Trainer.scale_factor
         local button_height = 30 * Trainer.scale_factor
         
-        -- Calculate button width 
+        -- Dynamic button sizing
         local total_spacing = spacing * 2
         local button_width = (available_width - total_spacing) / 3
         
-        -- Ensure buttons don't get too small
+        -- Enforce max button width
         local max_btn_width = 120 * Trainer.scale_factor
         if button_width > max_btn_width then 
              button_width = max_btn_width 
@@ -358,7 +348,7 @@ function Trainer.loopTrainerGUI()
         end
     end
 
-    -- Close UI
+    -- Cleanup ImGui frame
     reaper.ImGui_End(Trainer.ctx)
     reaper.ImGui_PopFont(Trainer.ctx)
     reaper.ImGui_PopStyleVar(Trainer.ctx, 6)
@@ -374,5 +364,5 @@ function Trainer.loopTrainerGUI()
     end
 end
 
--- Start the script
+-- Entry point
 reaper.defer(Trainer.loopTrainerGUI)
