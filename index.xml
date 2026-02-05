@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="efa4ea774f61ec1124e15d016044870a9c53b5e6">
+<index version="1" name="Floop's Reaper Scripts" commit="f67a8728ff9c95e0d4832b158a268a6ff6915c51">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -38,6 +38,10 @@
       </metadata>
       <version name="1.0.0" author="floop-s" time="2026-01-12T06:47:17Z">
         <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/effects/floop-master-control/floop-master-control.jsfx</source>
+      </version>
+      <version name="1.1.0" author="Floop-s" time="2026-02-01T11:25:30Z">
+        <changelog><![CDATA[Optimized MPC Layout, Smart Scaling, UI Cleanup]]></changelog>
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f67a8728ff9c95e0d4832b158a268a6ff6915c51/effects/floop-master-control/floop-master-control.jsfx</source>
       </version>
     </reapack>
   </category>
