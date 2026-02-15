@@ -12,8 +12,8 @@
 
 <p align="center"> 
  <br> 
- <a href="../../assets/floop-ess-hunter-v1.1.0.png" target="_blank"> 
-   <img src="../../assets/floop-ess-hunter-v1.1.0.png" width="450" style="border: 1px solid #27a086ff;" alt="click to zoom in"> 
+ <a href="https://raw.githubusercontent.com/floop-s/floops-reaper-scripts/main/assets/floop-ess-hunter-v1.1.0.png" target="_blank"> 
+   <img src="https://raw.githubusercontent.com/floop-s/floops-reaper-scripts/main/assets/floop-ess-hunter-v1.1.0.png" width="450" style="border: 1px solid #27a086ff;" alt="Click to zoom in"> 
  </a> 
  <br> 
  </p>
@@ -117,10 +117,15 @@ The easiest way to install and keep the script updated is via **ReaPack**.
 
 ## Changelog
 
+### v1.1.1 (2026-02-15)
+*   **Stability**: Improved envelope visibility when applying from preview and during Live Edit.
+*   **Control**: Segment gain handles now support live update when Live Edit is enabled.
+*   **Analysis**: Median ratio clamping hardened for extremely sibilant or short clips.
+
 ### v1.1.0 (2026-01-08)
 *   **New Feature**: Support for split clips and items not starting at timeline zero.
 *   **New Feature**: Interactive handles for manual segment resizing.
-*   **New Feature**: Per-segment volume adjustment via vertical drag (0-24dB reduction).
+*   **New Feature**: Per-segment volume adjustment via vertical drag (0–24 dB reduction).
 *   **UI**: Improved waveform display alignment for offset items.
 *   **Fix**: "Analyze and Apply" logic aligned with take-relative time for accurate envelope placement.
 *   **Fix**: Resolved segment edge resizing conflicts with volume drag.

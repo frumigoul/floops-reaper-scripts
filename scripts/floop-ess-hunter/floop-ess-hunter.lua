@@ -1,16 +1,12 @@
--- Floop Ess Hunter Taming hiss in a single pass.
+-- Floop Ess Hunter: taming hiss in a single pass.
 -- @description Floop Ess Hunter: tame hiss and sibilance with envelopes.
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
---   v1.1.0
---   - Added support for split clips and items not starting at 0.
---   - Introduced interactive handles for manual segment adjustment.
---   - Added per-segment volume control via vertical drag.
---   - Fixed waveform display alignment for offset items.
---   - "Analyze and Apply" now correctly handles item offsets and playrates.
---   - "Close" button in title bar now matches standard close behavior.
+--   - Improved envelope visibility and stability when applying from preview.
+--   - Added segment gain handles with live update when Live Edit is enabled.
+--   - Hardened analysis and preview via median clamp on extreme sibilant material.
 -- @about
 --   Floop Ess Hunter
 --   Taming hiss.
@@ -40,14 +36,14 @@ end
 
 local ImGui = reaper.ImGui
 if not ImGui then
-  -- minimal wrapper over reaper.ImGui_* functions
+  -- Minimal wrapper over reaper.ImGui_* functions
   ImGui = {}
   function ImGui.CreateContext(name) return reaper.ImGui_CreateContext(name) end
   function ImGui.DestroyContext(ctx)
     if reaper.ImGui_DestroyContext then
       return reaper.ImGui_DestroyContext(ctx)
     end
-    --  no-op destroy if missing
+    -- No-op destroy if API is missing
   end
   function ImGui.SetNextWindowSize(ctx, w, h, cond) return reaper.ImGui_SetNextWindowSize(ctx, w, h, cond) end
   function ImGui.Begin(ctx, title, open, flags) return reaper.ImGui_Begin(ctx, title, open, flags) end
@@ -64,7 +60,7 @@ if not ImGui then
   function ImGui.Checkbox(ctx, label, v) return reaper.ImGui_Checkbox(ctx, label, v) end
   function ImGui.WindowFlags_NoCollapse() return reaper.ImGui_WindowFlags_NoCollapse() end
   function ImGui.Cond_Appearing() return reaper.ImGui_Cond_Appearing() end
-  --  add combo/selectable wrappers
+  -- Add combo/selectable wrappers
   function ImGui.BeginCombo(ctx, label, preview, flags) return reaper.ImGui_BeginCombo(ctx, label, preview, flags or 0) end
   function ImGui.EndCombo(ctx) return reaper.ImGui_EndCombo(ctx) end
   function ImGui.Selectable(ctx, label, selected) return reaper.ImGui_Selectable(ctx, label, selected or false) end
@@ -81,9 +77,9 @@ if not ImGui then
     reaper.ImGui_Text(ctx, string.format('Progress: %d%%', floor((frac or 0)*100+0.5)))
     return true
   end
-  end
+end
 
---  ProgressBar fallback (newer API)
+-- ProgressBar compatibility wrapper
 if ImGui and not ImGui.ProgressBar then
   function ImGui.ProgressBar(ctx, frac, w, h, overlay)
     local f = reaper.ImGui_ProgressBar
@@ -150,6 +146,27 @@ local function end_theme(color_count)
   reaper.ImGui_PopStyleVar(ctx, to_pop)
 end
 
+-- Modifier detection (Ctrl/Alt) across ReaImGui versions
+local function mod_ctrl()
+  local mods = reaper.ImGui_GetKeyMods(ctx)
+  local ctrl = (reaper.ImGui_KeyModFlags_Ctrl and reaper.ImGui_KeyModFlags_Ctrl()) or (reaper.ImGui_ModFlags_Ctrl and reaper.ImGui_ModFlags_Ctrl()) or 0
+  return (mods & ctrl) ~= 0
+end
+
+local function mod_alt()
+  local mods = reaper.ImGui_GetKeyMods(ctx)
+  local alt = (reaper.ImGui_KeyModFlags_Alt and reaper.ImGui_KeyModFlags_Alt()) or (reaper.ImGui_ModFlags_Alt and reaper.ImGui_ModFlags_Alt()) or 0
+  return (mods & alt) ~= 0
+end
+
+local function is_valid_item(item)
+  if not item then return false end
+  if reaper.ValidatePtr2 then
+    return reaper.ValidatePtr2(0, item, "MediaItem*")
+  end
+  return true
+end
+
 -- State: defaults
 local state = {
   band_min = 3500,
@@ -181,13 +198,16 @@ local state = {
   view_len_frac = 1.0,
   snap_to_hop = true,
   live_edit = false,
+  new_seg_active = false,
+  new_seg_start_t = nil,
+  new_seg_end_t = nil,
   custom_preset_name = '',
   selected_custom_index = 0,
   msg = "",
   preset_index = 0,
-  -- Exp: detection toggles (no UI)
-  centers_log = false,       -- use logarithmic spacing for band centers
-  bands_per_oct = 4,         -- density for log spacing
+  -- Detection toggles (no UI)
+  centers_log = false,       -- Use logarithmic spacing for band centers
+  bands_per_oct = 4,         -- Band density per octave for log spacing
   -- Help modal state
   show_help = false,
 }
@@ -497,8 +517,9 @@ local function draw_help_modal()
       -- Preview & Interactions
       reaper.ImGui_SeparatorText(ctx, 'Preview & Interactions')
       reaper.ImGui_TextWrapped(ctx, [[
-• Zoom: mouse wheel over the waveform; pan with right‑button drag.
-• Drag segments: drag edges to refine boundaries; optional hop snapping for temporal consistency.
+• Zoom: mouse wheel over the waveform; pan with right-button drag.
+• Drag segments: adjust edges to refine boundaries; optional hop snapping for temporal consistency.
+• Segment gain: drag the square handle at the bottom of each segment to change reduction; right-click to delete.
 • Apply from preview: available only after "Analyze (Preview)".
       ]])
       reaper.ImGui_Spacing(ctx)
@@ -764,36 +785,51 @@ local TARGET_TRACK_VOL = 0
 local TARGET_TRACK_PREFX = 1
 local TARGET_TAKE_VOL = 2
 
+local function ensure_envelope_visible(env)
+  local vis = reaper.GetEnvelopeInfo_Value(env, "VIS")
+  if vis >= 0.5 then return end
+  if reaper.SetEnvelopeInfo_Value then
+    reaper.SetEnvelopeInfo_Value(env, "VIS", 1.0)
+    return
+  end
+  if reaper.GetEnvelopeStateChunk and reaper.SetEnvelopeStateChunk then
+    local ok, chunk = reaper.GetEnvelopeStateChunk(env, "", false)
+    if ok == true and type(chunk) == "string" and #chunk > 0 then
+      local new = chunk:gsub("VIS%s+%d", "VIS 1")
+      if new ~= chunk then
+        reaper.SetEnvelopeStateChunk(env, new, false)
+      end
+    end
+  end
+end
+
 local function get_target_envelope(track, item, mode)
-  -- Mode 0: Track Volume, 1: Track Pre-FX Volume, 2: Take Volume
-  
-  -- Handle Take Volume (Mode 2)
   if mode == TARGET_TAKE_VOL then
     local take = reaper.GetActiveTake(item)
     if not take then return nil end
     local env = reaper.GetTakeEnvelopeByName(take, "Volume")
-    if env then return env end
-    
-    -- Not found, try to activate it
-    -- Save selection
+    if env then
+      ensure_envelope_visible(env)
+      return env, true
+    end
+
     local selected_items = {}
     for i=0, reaper.CountSelectedMediaItems(0)-1 do
       selected_items[#selected_items+1] = reaper.GetSelectedMediaItem(0, i)
     end
-    
+
     reaper.SelectAllMediaItems(0, false)
     reaper.SetMediaItemSelected(item, true)
-    
-    -- Action: Toggle take volume envelope (40693)
-    -- We only call this if env is nil, so it should enable it.
     reaper.Main_OnCommand(40693, 0)
-    
+
     env = reaper.GetTakeEnvelopeByName(take, "Volume")
-    
-    -- Restore selection
+    if env then
+      ensure_envelope_visible(env)
+    end
+
     reaper.SelectAllMediaItems(0, false)
     for _, it in ipairs(selected_items) do reaper.SetMediaItemSelected(it, true) end
-    
+
     return env, true
   end
 
@@ -822,11 +858,10 @@ local function get_target_envelope(track, item, mode)
   -- If it doesn't exist, activate/create it and make it visible
   if env == nil then
     if mode == TARGET_TRACK_PREFX then
-      reaper.Main_OnCommand(40050, 0) -- Toggle pre-FX volume envelope
-      reaper.Main_OnCommand(40408, 0) -- Show/hide pre-FX volume envelope
+      reaper.Main_OnCommand(40050, 0) -- Toggle pre-FX volume envelope (create/enable)
     else
       -- Legacy branch: standard volume (compatibility)
-      reaper.Main_OnCommand(40406, 0) -- Toggle track volume envelope visible
+      reaper.Main_OnCommand(40406, 0) -- Toggle track volume envelope visible (create/enable)
     end
     env = reaper.GetTrackEnvelopeByName(track, name)
     if env == nil then
@@ -842,15 +877,7 @@ local function get_target_envelope(track, item, mode)
     end
   end
 
-  -- Ensure the envelope is visible under the track
-  local vis = reaper.GetEnvelopeInfo_Value(env, "VIS")
-  if vis < 0.5 then
-    if mode == TARGET_TRACK_PREFX then
-      reaper.Main_OnCommand(40408, 0) -- Show/hide pre-FX volume envelope
-    else
-      reaper.Main_OnCommand(40406, 0) -- Toggle track volume envelope visible
-    end
-  end
+  ensure_envelope_visible(env)
 
   -- Restore original track selection
   for i = 0, reaper.CountTracks(0)-1 do
@@ -914,7 +941,7 @@ local function clear_previous_segments(env, track, item, item_pos, start_offs, p
   
   local function to_env_time(t_proj)
     if is_take_env then
-      return (t_proj - item_pos) * playrate + start_offs
+      return (t_proj - item_pos) * playrate
     else
       return t_proj
     end
@@ -933,12 +960,9 @@ local function insert_reduction_points(env, t_start, t_end, factor, pre_ms, post
   local post = max(0, post_ms/1000)
   local shape = 0 -- linear
   
-  -- Calculate Source Time explicitly
-  -- Formula: T_source = (T_proj - ItemPos) * PlayRate + StartOffset
-  -- If Track Envelope: ItemPos=0, StartOffset=0, PlayRate=1.0 -> T_source = T_proj
   local function to_env_time(t_proj)
     if is_take_env then
-      return (t_proj - item_pos) * playrate + start_offs
+      return (t_proj - item_pos) * playrate
     else
       return t_proj
     end
@@ -949,8 +973,6 @@ local function insert_reduction_points(env, t_start, t_end, factor, pre_ms, post
   local t3 = to_env_time(t_end)
   local t4 = to_env_time(t_end + post)
   
-  -- Why: evaluate baseline just outside segment
-  -- For Take Envelope, Evaluate expects Source Time.
   local v_pre = select(2, reaper.Envelope_Evaluate(env, max(0, t1 - 1e-3), 0, 0))
   local v_post = select(2, reaper.Envelope_Evaluate(env, t4 + 1e-3, 0, 0))
   -- Overwrite: remove points in range to prevent accumulation
@@ -1053,8 +1075,6 @@ local function analyze_item_and_reduce(item, cfg)
   local sr = reaper.GetMediaSourceSampleRate(src); if not sr or sr<=0 then sr = 48000 end
   local pr = reaper.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE") or 1.0
   if not pr or pr <= 0 then pr = 1.0 end
-  -- DEBUG: Check playrate
-  -- reaper.ShowConsoleMsg(string.format("Analyze: PR=%.4f, TargetMode=%s\n", pr, tostring(cfg.target_mode)))
   sr = floor(sr * pr + 0.5)
   local ch = reaper.GetMediaSourceNumChannels(src); if not ch or ch<1 then ch = 1 end
   local accessor = reaper.CreateTakeAudioAccessor(take); if not accessor then return 0 end
@@ -1105,12 +1125,9 @@ local function analyze_item_and_reduce(item, cfg)
   local ratios = {}
   for i=1,#ratios_all do if levels_all[i] > min_level_use then ratios[#ratios+1] = ratios_all[i] end end
   if #ratios == 0 then ratios = ratios_all end
-  
-  -- POTENZIAMENTO: Clamp della mediana per evitare fallimenti su clip brevi/solo sibilanti 
-  -- Se la mediana è > 0.6, probabilmente stiamo analizzando solo rumore/sibilanti. 
-  local raw_median = median(ratios) 
-  local med_ratio = min(raw_median, 0.55) 
-  
+  -- Clamp median to remain robust on short or highly sibilant clips
+  local raw_median = median(ratios)
+  local med_ratio = min(raw_median, 0.55)
   local thr_on = med_ratio + cfg.delta_on
   local thr_off = med_ratio + cfg.delta_off
 
@@ -1257,11 +1274,7 @@ local function preview_start(cfg)
     t_start = reaper.time_precise(),
     win_count = 0,
   }
-  
-  -- DEBUG: Print info
-  -- local src_len = reaper.GetMediaSourceLength(src)
-  -- reaper.ShowConsoleMsg(string.format("\n--- Preview Start ---\nItem Pos: %.4f\nItem Len: %.4f\nStart Offs: %.4f\nPlayrate: %.4f\nSampleRate: %d\nSrc Len: %.4f\n", item_pos, item_len, start_offs, pr, sr, src_len))
-  
+ 
   state.msg = 'Analyzing...'
 end
 
@@ -1293,11 +1306,9 @@ local function preview_step(budget_seconds)
         local ratios = {}
         for i=1,#job.ratios_all do if job.levels_all[i] > job.min_level_use then ratios[#ratios+1] = job.ratios_all[i] end end
         if #ratios == 0 then ratios = job.ratios_all end
-        
-        -- POTENZIAMENTO: Stesso clamp per la preview 
-        local raw_median = median(ratios) 
-        job.med_ratio = min(raw_median, 0.55) 
-        
+        -- Apply same median clamp for preview to stay robust on extreme material
+        local raw_median = median(ratios)
+        job.med_ratio = min(raw_median, 0.55)
         job.thr_on = job.med_ratio + job.cfg.delta_on
         job.thr_off = job.med_ratio + job.cfg.delta_off
         job.bank2 = build_bank(job.sr, job.centers, job.cfg.band_Q)
@@ -1306,9 +1317,6 @@ local function preview_step(budget_seconds)
         break
       end
       local src_t = job.t_rel * job.pr
-      -- if job.win_count < 5 then
-      --   reaper.ShowConsoleMsg(string.format("Win %d: t_rel=%.4f src_t=%.4f\n", job.win_count, job.t_rel, src_t))
-      -- end
       job.buf.clear(); reaper.GetAudioAccessorSamples(job.accessor, job.sr, job.ch, src_t, job.N, job.buf)
       local data = job.buf.table()
       local Ns = job.N
@@ -1455,6 +1463,11 @@ end
 local function apply_cached_segments(cfg)
   if not analysis_cache or not analysis_cache.item then state.msg = 'No preview cached'; return end
   local item = analysis_cache.item
+  if not is_valid_item(item) then
+    state.msg = 'Item changed, run Analyze (Preview) again'
+    analysis_cache = nil
+    return
+  end
   local track = reaper.GetMediaItem_Track(item)
   local env, is_take_env = get_target_envelope(track, item, cfg.target_mode or (cfg.use_prefx and 1 or 0))
   if not env then state.msg = 'Cannot access envelope'; return end
@@ -1467,7 +1480,7 @@ local function apply_cached_segments(cfg)
   local ep_offs = is_take_env and start_offs or 0.0
   local ep_rate = is_take_env and pr or 1.0
 
-  if cfg.overwrite then clear_previous_segments(env, track, item, ep_pos, ep_offs, ep_rate) end
+  if cfg.overwrite then clear_previous_segments(env, track, item, ep_pos, ep_offs, ep_rate, is_take_env) end
   local factor = db_to_amp(-cfg.reduction_db)
   reaper.Undo_BeginBlock()
   reaper.PreventUIRefresh(1)
@@ -1477,7 +1490,7 @@ local function apply_cached_segments(cfg)
     if s[3] then
       seg_factor = db_to_amp(-s[3])
     end
-    insert_reduction_points(env, s[1], s[2], seg_factor, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.overwrite, ep_pos, ep_offs, ep_rate)
+    insert_reduction_points(env, s[1], s[2], seg_factor, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.overwrite, ep_pos, ep_offs, ep_rate, is_take_env)
   end
   save_segments(track, item, analysis_cache.segments, cfg.pre_ramp_ms, cfg.post_ramp_ms)
   reaper.Envelope_SortPoints(env)
@@ -1506,7 +1519,7 @@ local function clear_segments_for_selection()
       local ep_offs = is_take_env and start_offs or 0.0
       local ep_rate = is_take_env and pr or 1.0
       
-      clear_previous_segments(env, track, item, ep_pos, ep_offs, ep_rate)
+      clear_previous_segments(env, track, item, ep_pos, ep_offs, ep_rate, is_take_env)
       
       local item_pos = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
       local item_len = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
@@ -1519,8 +1532,8 @@ local function clear_segments_for_selection()
       local range_t2 = item_pos + item_len
       
       if is_take_env then
-        range_t1 = (range_t1 - ep_pos) * ep_rate + ep_offs
-        range_t2 = (range_t2 - ep_pos) * ep_rate + ep_offs
+        range_t1 = (range_t1 - ep_pos) * ep_rate
+        range_t2 = (range_t2 - ep_pos) * ep_rate
       end
       
       reaper.DeleteEnvelopePointRange(env, range_t1, range_t2)
@@ -1573,26 +1586,28 @@ local function draw_waveform_panel()
       if wheel ~= 0 then
         local cursor_frac = (mx - x0) / W
         if cursor_frac < 0 then cursor_frac = 0 elseif cursor_frac > 1 then cursor_frac = 1 end
-        local factor = math.exp(-wheel * 0.2)
-        local new_len = math.max(0.1, math.min(1.0, view_len * factor))
-        local delta_len = new_len - view_len
-        local new_start = view_start + cursor_frac * (-delta_len)
-        if new_start < 0 then new_start = 0 end
-        if new_start + new_len > 1.0 then new_start = 1.0 - new_len end
-        state.view_len_frac = new_len
-        state.view_start_frac = new_start
-        view_len = new_len
-        view_start = new_start
-      end
-      -- Pan with right or middle mouse drag
-      if reaper.ImGui_IsMouseDown(ctx, 1) or reaper.ImGui_IsMouseDown(ctx, 2) then
-        local dx = reaper.ImGui_GetMouseDelta(ctx)
-        local delta = dx / W * view_len
-        local new_start = view_start - delta
-        if new_start < 0 then new_start = 0 end
-        if new_start + view_len > 1.0 then new_start = 1.0 - view_len end
-        state.view_start_frac = new_start
-        view_start = new_start
+        local ctrl_or_alt = mod_ctrl() or mod_alt()
+        if ctrl_or_alt then
+          -- Horizontal navigation on Ctrl/Alt + Wheel
+          local step = 0.25 * view_len
+          local new_start = view_start - (wheel * step)
+          if new_start < 0 then new_start = 0 end
+          if new_start + view_len > 1.0 then new_start = 1.0 - view_len end
+          state.view_start_frac = new_start
+          view_start = new_start
+        else
+          -- Zoom on Wheel
+          local factor = math.exp(-wheel * 0.2)
+          local new_len = math.max(0.1, math.min(1.0, view_len * factor))
+          local delta_len = new_len - view_len
+          local new_start = view_start + cursor_frac * (-delta_len)
+          if new_start < 0 then new_start = 0 end
+          if new_start + new_len > 1.0 then new_start = 1.0 - new_len end
+          state.view_len_frac = new_len
+          state.view_start_frac = new_start
+          view_len = new_len
+          view_start = new_start
+        end
       end
     end
 
@@ -1620,8 +1635,8 @@ local function draw_waveform_panel()
       local x1 = x0 + ((math.max(s[1], vis_t0) - vis_t0) / vis_len) * W
       local x2 = x0 + ((math.min(s[2], vis_t1) - vis_t0) / vis_len) * W
       if x2 > x1 then
-        -- POTENZIAMENTO GUI: Colore più evidente (Rosso semitrasparente) per indicare l'azione di De-essing 
-        reaper.ImGui_DrawList_AddRectFilled(dl, x1, wave_top, x2, wave_top+wave_h, 0xEF444455) 
+        -- Highlight sibilant segments with a red overlay
+        reaper.ImGui_DrawList_AddRectFilled(dl, x1, wave_top, x2, wave_top+wave_h, 0xEF444455)
         
         -- Handle: Square button at start-bottom (Volume/Delete)
         local h_size = 12
@@ -1777,6 +1792,42 @@ local function draw_waveform_panel()
        end
     end
 
+    -- Safe segment creation: Ctrl/Alt + Right Drag
+    if hovered then
+      local ctrl_or_alt = mod_ctrl() or mod_alt()
+      if ctrl_or_alt and reaper.ImGui_IsMouseClicked(ctx, 1) then
+        local frac = (mx - x0) / W
+        if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+        state.new_seg_start_t = vis_t0 + frac * vis_len
+        state.new_seg_end_t = state.new_seg_start_t
+        state.new_seg_active = true
+      end
+      if state.new_seg_active then
+        if reaper.ImGui_IsMouseDown(ctx, 1) then
+          local frac = (mx - x0) / W
+          if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+          state.new_seg_end_t = vis_t0 + frac * vis_len
+          local x1 = x0 + ((math.max(state.new_seg_start_t, vis_t0) - vis_t0) / vis_len) * W
+          local x2 = x0 + ((math.min(state.new_seg_end_t, vis_t1) - vis_t0) / vis_len) * W
+          if x2 < x1 then x1, x2 = x2, x1 end
+          reaper.ImGui_DrawList_AddRectFilled(dl, x1, wave_top, x2, wave_top+wave_h, 0xEF444455)
+        else
+          if reaper.ImGui_IsMouseReleased(ctx, 1) then
+            local t1 = math.min(state.new_seg_start_t or vis_t0, state.new_seg_end_t or vis_t0)
+            local t2 = math.max(state.new_seg_start_t or vis_t0, state.new_seg_end_t or vis_t0)
+            if (t2 - t1) * 1000 >= (state.min_seg_ms or 25) then
+              analysis_cache.segments[#analysis_cache.segments+1] = { t1, t2, state.reduction_db }
+              state.last_change_time = reaper.time_precise()
+              if state.live_edit then apply_cached_segments(state) end
+            end
+            state.new_seg_active = false
+            state.new_seg_start_t = nil
+            state.new_seg_end_t = nil
+          end
+        end
+      end
+    end
+
     -- Navigation: Left Click/Drag to seek (Scrub)
     if hovered and reaper.ImGui_IsMouseDown(ctx, 0) then
       local is_drag_action = (state.drag_seg_index and state.drag_seg_index >= 0) or state.drag_threshold
@@ -1800,7 +1851,7 @@ local function draw_waveform_panel()
   end
 end
 
--- UI: labeled sliders (MK Slicer style)
+-- UI: labeled sliders
 local function slider_labeled_int(id, label, v, vmin, vmax, width, suffix)
   if width then reaper.ImGui_SetNextItemWidth(ctx, width) end
   local changed, nv = ImGui.SliderInt(ctx, '##'..id, v, vmin, vmax)
@@ -1844,9 +1895,9 @@ local function slider_labeled_float(id, label, v, vmin, vmax, width, fmt, suffix
   if changed and state then state.last_change_time = reaper.time_precise() end
   return changed, nv
 end
---UI Start
+-- UI: main loop
 local function loop()
-  -- Perf: step preview with small time budget per frame
+  -- Perf: step preview with a small time budget per frame
   if preview_job then preview_step(0.008) end
   if not preview_job and state.auto_analyze and state.last_change_time then
     local now = reaper.time_precise()
@@ -2075,7 +2126,7 @@ local adv_open = reaper.ImGui_CollapsingHeader(ctx, 'ADVANCED SETTINGS', nil, 0)
     
 
 
-    --  Help modal in main frame (dock focus fix)
+    -- Help modal in main frame (dock focus fix)
     draw_help_modal()
     
     ImGui.End(ctx)

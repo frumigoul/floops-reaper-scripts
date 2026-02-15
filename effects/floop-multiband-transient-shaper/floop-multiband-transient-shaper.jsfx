@@ -1,0 +1,2277 @@
+desc:Floop Multiband Transient Shaper 
+// @version 1.0.0
+// @author Floop-s
+// @license GPL-3.0
+// @changelog 
+//   - Initial Release v1.0.0
+// @about
+//    3-Band Transient Shaper with Transparent Crossovers and up to 8x Oversampling.
+//    Features per-band Attack/Sustain, LUFS Auto-Gain, Lookahead Limiter, and Delta Monitoring.
+// @provides
+//   [effect] floop-multiband-transient-shaper.jsfx
+
+
+// Slider Definitions
+slider1:xo_low_mid=200<60,1000,1>Low-Mid Crossover (Hz)
+slider2:xo_mid_high=2500<1000,10000,1>Mid-High Crossover (Hz)
+
+slider5:drive_low=0<-12,12,0.1>Low Gain (dB)
+slider6:att_low=0<-100,100,1>Low Attack (%)
+slider7:sus_low=0<-100,100,1>Low Sustain (%)
+slider8:mute_low=0<0,1,1{Off,Mute}>Low Mute
+slider9:solo_low=0<0,1,1{Off,Solo}>Low Solo
+slider10:bypass_low=0<0,1,1{Off,Bypass}>Low Bypass
+
+slider15:drive_mid=0<-12,12,0.1>Mid Gain (dB)
+slider16:att_mid=0<-100,100,1>Mid Attack (%)
+slider17:sus_mid=0<-100,100,1>Mid Sustain (%)
+slider18:mute_mid=0<0,1,1{Off,Mute}>Mid Mute
+slider19:solo_mid=0<0,1,1{Off,Solo}>Mid Solo
+slider20:bypass_mid=0<0,1,1{Off,Bypass}>Mid Bypass
+
+slider25:drive_high=0<-12,12,0.1>High Gain (dB)
+slider26:att_high=0<-100,100,1>High Attack (%)
+slider27:sus_high=0<-100,100,1>High Sustain (%)
+slider28:mute_high=0<0,1,1{Off,Mute}>High Mute
+slider29:solo_high=0<0,1,1{Off,Solo}>High Solo
+slider30:bypass_high=0<0,1,1{Off,Bypass}>High Bypass
+
+slider40:out_gain=0<-24,24,0.1>Output Gain (dB)
+slider41:dry_wet=100<0,100,1>Mix (%)
+slider42:soft_clip=1<0,1,1{Off,On}>Soft Clipper
+slider43:os_mode=1<0,3,1{Off,2x,4x,8x}>Oversampling
+slider44:auto_gain=0<0,1,1{Off,On}>Auto Gain (LUFS)
+slider45:xo_slope=1<0,1,1{12dB/oct,24dB/oct}>Crossover Slope
+slider46:limiter_on=0<0,1,1{Off,On}>Limiter
+slider47:sc_hp_on=0<0,1,1{Off,On}>Detector HP (100Hz)
+slider48:delta_mode=0<0,1,1{Off,On}>Delta Solo
+slider49:stereo_link=100<0,100,1>Stereo Link (%)
+slider50:xo_mode=0<0,1,1{Analog (LR),Transparent}>Crossover Mode
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+options:no_meter
+options:pdc
+
+// Initialization
+@init
+ext_noinit = 1.0;
+function db2lin(db) ( pow(10, db / 20); );
+function lin2db(lin) ( 20 * log10(max(0.0000001, lin)); );
+function clamp(v, min_v, max_v) ( max(min_v, min(max_v, v)); );
+function fast_tanh(x) ( x * (27 + x*x) / (27 + 9*x*x); );
+
+// Slider Masking Setup
+UI_SLIDER_MASK = pow(2, 50) - 1; // Mask up to Slider 49 (Bit 48)
+sliders_showing = slider_show(UI_SLIDER_MASK, 0) > 0; // Initialize Slider Visibility
+
+// Static Memory Map
+mem_ptr = 0;
+
+// Memory Safety Check
+MAX_MEM_LIMIT = 8000000; 
+FIXED_OVERHEAD = 300000; // Reserve for limiters, delta, history
+safe_wave_limit = floor((MAX_MEM_LIMIT - FIXED_OVERHEAD) / 2);
+
+gfx_wave_size = min(1920000, floor(srate * 60)); 
+gfx_wave_size = min(gfx_wave_size, safe_wave_limit); // Apply Memory Limit
+gfx_wave_size < 48000 ? gfx_wave_size = 48000;
+
+// Buffer Constants (Power of 2 for bitwise masking)
+BUF_SZ = 32768;
+BUF_MASK = 32767;
+current_proc_latency = 0;
+pending_pdc_latency = 0;
+
+gfx_wave_buf = mem_ptr; mem_ptr += gfx_wave_size + 1024;
+gfx_out_buf  = mem_ptr; mem_ptr += gfx_wave_size + 1024;
+lim_buf_l    = mem_ptr; mem_ptr += BUF_SZ;
+lim_buf_r    = mem_ptr; mem_ptr += BUF_SZ;
+  gr_hist_buf  = mem_ptr; mem_ptr += 2048; // GR History Allocation
+  delta_buf_l  = mem_ptr; mem_ptr += BUF_SZ;
+  delta_buf_r  = mem_ptr; mem_ptr += BUF_SZ;
+
+buf_l_low = 0; buf_r_low = 0;
+
+DB_TO_GAIN = 8.6858896380650365530225783783321;
+PI = 3.14159265358979323846;
+DENORM = 0.000000000000000000000000000001; // Anti-denormal constant
+
+// --- STATE VARS INIT ---
+last_block_time = 0;
+last_click_time = 0;
+last_click_id = 0;
+
+delta_mode = 0; // Default: OFF
+slider(48) = 0;
+slider(49) = 100;
+
+// --- FADE-SWITCH STATE ---
+switch_state = 0; // 0=Idle, 1=FadeOut, 2=FadeIn
+switch_fade = 1.0;
+switch_inc = 0; // Calculated based on fade time
+
+// Requested vs Active states for glitch-free switching
+req_xo_mode = 0; act_xo_mode = 0;
+req_limiter_on = 0; act_limiter_on = 0;
+req_delta_mode = 0; act_delta_mode = 0;
+req_os_mode = 1; act_os_mode = 1; // Default 2x
+req_slope_mode = 1; act_slope_mode = 1; // Default 24dB
+
+drag_knob_id = 0;
+drag_handle = 0;
+view_seconds = 0;
+last_srate = 0;
+show_output_wave = 1;
+user_zoomed = 0;
+
+// --- AUTO GAIN RMS ---
+rms_win_ms = 400; // 400ms window
+rms_sq_sum_in = 0;
+  rms_sq_sum_out = 0;
+ag_current_gain = 1.0;
+ag_smooth_coeff = 0; // Calculated in update_dsp
+ag_gate = 0.0005;
+limiter_gain = 1.0;
+limit_lin = 0.988553;
+lim_att = 0;
+lim_rel = 0;
+lim_buf_ptr = 0; // Init limiter pointer
+out_peak_l = 0;
+out_peak_r = 0;
+peak_decay = 0;
+clip_counter = 0;
+clip_hold_samples = 0;
+
+// --- GRAPHICS MEMORY ---
+// Clear waveform buffers to avoid artifacts on start (ext_noinit)
+i = 0;
+loop(gfx_wave_size,
+  gfx_wave_buf[i] = 0;
+  gfx_out_buf[i] = 0;
+  i += 1;
+);
+
+// --- OVERSAMPLING INIT ---
+// Polyphase Allpass coefficients (Steep/Ultra)
+os_a1 = 0.161758; os_a2 = 0.733029; // Steep coefficients
+
+// State variables for OS
+function os_init() (
+  this.s1 = 0; this.s2 = 0;
+);
+// Instantiate OS filters
+os_L_up.os_init(); os_R_up.os_init();
+os_L_down.os_init(); os_R_down.os_init();
+// 2nd stage for 4x
+os4_L_up_0.os_init(); os4_L_up_1.os_init();
+os4_R_up_0.os_init(); os4_R_up_1.os_init();
+os4_L_down_0.os_init(); os4_L_down_1.os_init();
+os4_R_down_0.os_init(); os4_R_down_1.os_init();
+
+// 3rd stage for 8x
+os8_L_up_0.os_init(); os8_L_up_1.os_init(); os8_L_up_2.os_init(); os8_L_up_3.os_init();
+os8_R_up_0.os_init(); os8_R_up_1.os_init(); os8_R_up_2.os_init(); os8_R_up_3.os_init();
+os8_L_down_0.os_init(); os8_L_down_1.os_init(); os8_L_down_2.os_init(); os8_L_down_3.os_init();
+os8_R_down_0.os_init(); os8_R_down_1.os_init(); os8_R_down_2.os_init(); os8_R_down_3.os_init();
+
+// LUFS Weighting Filters
+// K-Weighting High Shelf
+function bq_init() ( this.x1=0; this.x2=0; this.y1=0; this.y2=0; );
+function bq_process(x) instance(a0, a1, a2, b1, b2, x1, x2, y1, y2) local(y) (
+  y = a0*x + a1*x1 + a2*x2 - b1*y1 - b2*y2;
+  x2 = x1; x1 = x;
+  y2 = y1; y1 = y;
+  y;
+);
+// Biquad Filter Implementation
+function bq_set_hs_rbj(freq, gain_db, Q, sr) instance(a0, a1, a2, b1, b2) local(A, w0, alpha, norm) (
+  freq = max(20, min(sr * 0.49, freq)); // Safety clamp
+  Q = max(0.001, Q);
+  
+  A = pow(10, gain_db / 40);
+  w0 = 2 * 3.14159265 * freq / sr;
+  alpha = sin(w0) / 2 * sqrt( (A + 1/A)*(1/Q - 1) + 2 ); 
+  
+  norm = 1 / ((A+1) - (A-1)*cos(w0) + 2*sqrt(A)*alpha);
+  
+  a0 = (A*( (A+1) + (A-1)*cos(w0) + 2*sqrt(A)*alpha )) * norm;
+  a1 = (-2*A*( (A-1) + (A+1)*cos(w0)                   )) * norm;
+  a2 = (A*( (A+1) + (A-1)*cos(w0) - 2*sqrt(A)*alpha )) * norm;
+  b1 = (2*( (A-1) - (A+1)*cos(w0)                   )) * norm;
+  b2 = ((A+1) - (A-1)*cos(w0) - 2*sqrt(A)*alpha) * norm;
+);
+
+// Filters initialized later
+
+// --- LINKWITZ-RILEY FILTER (SVF) ---
+function svf_init() (
+  this.ic1eq = 0; this.ic2eq = 0;
+);
+
+function svf_set_freq(cutoff_hz, Q, sr) instance(a1, a2, a3, k) local(g) (
+  g = tan(PI * cutoff_hz / sr);
+  k = 1/Q;
+  a1 = 1 / (1 + g * (g + k));
+  a2 = g * a1;
+  a3 = g * a2;
+  this.k = k;
+);
+
+function svf_process(v0) instance(ic1eq, ic2eq, a1, a2, a3, k, lp, hp) local(v1, v2, v3) (
+  v3 = v0 - ic2eq;
+  v1 = a1 * ic1eq + a2 * v3;
+  v2 = ic2eq + a2 * ic1eq + a3 * v3;
+  ic1eq = 2*v1 - ic1eq + DENORM;
+  ic2eq = 2*v2 - ic2eq + DENORM;
+  lp = v2;
+  hp = v0 - k*v1 - v2;
+);
+
+// --- TRANSIENT SHAPER ---
+function ts_init() (
+  this.env_fast = 0;
+  this.env_slow = 0;
+  this.gain = 1;
+  this.current_gr = 1; 
+  this.last_out = 0;
+);
+
+// Helper to scale coefficients
+function scale_coef(c_base_44k, sr) (
+  1 - pow(1 - c_base_44k, 44100 / sr);
+);
+
+function ts_update_coeffs(sr) instance(c_fast_att, c_fast_rel, c_slow_att, c_slow_rel, c_smooth) (
+  // Calculate coefficients
+  
+  // Fast Env
+  c_fast_att = exp(-1 / (0.001 * sr)); 
+  c_fast_rel = exp(-1 / (0.015 * sr));
+  
+  // Slow Env
+  c_slow_att = exp(-1 / (0.015 * sr));
+  c_slow_rel = exp(-1 / (0.500 * sr));
+  
+  // Gain smoothing
+  c_smooth = exp(-1 / (0.001 * sr)); 
+);
+
+function ts_process(in, env_in, att_pct, sus_pct) instance(env_fast, env_slow, gain, c_fast_att, c_fast_rel, c_slow_att, c_slow_rel, c_smooth, current_gr, last_out) local(abs_in, diff, gain_mod, final_gain, target_gain) (
+  abs_in = env_in;
+  
+  // Envelope Follower
+  env_fast = abs_in > env_fast ? 
+             env_fast * c_fast_att + abs_in * (1-c_fast_att) : 
+             env_fast * c_fast_rel + abs_in * (1-c_fast_rel);
+  env_fast += DENORM;
+             
+  env_slow = abs_in > env_slow ? 
+             env_slow * c_slow_att + abs_in * (1-c_slow_att) : 
+             env_slow * c_slow_rel + abs_in * (1-c_slow_rel);
+  env_slow += DENORM;
+  
+  // Ratio calculation
+  ratio = (env_fast + 0.000001) / (env_slow + 0.000001);
+  
+  // Shaping Logic
+  ratio > 1.0 ? (
+    // Attack Phase
+    target_gain = 1.0 + (ratio - 1.0) * (att_pct * 0.08);
+  ) : (
+    // Sustain Phase
+    sus_pct > 0 ? (
+       // Boost Tail
+       target_gain = 1.0 + (1.0 - ratio) * (sus_pct * 0.15); 
+    ) : (
+       // Cut Tail
+       target_gain = 1.0 + (ratio - 1.0) * (-sus_pct * 0.08);
+    );
+  );
+  
+  // Clamp gain range
+  target_gain = clamp(target_gain, 0.1, 10.0);
+  
+  // Smooth gain
+  gain = gain * c_smooth + target_gain * (1 - c_smooth);
+  
+  // Bypass if unity gain and neutral parameters
+  (abs(gain - 1.0) < 0.000001 && abs(att_pct) < 0.1 && abs(sus_pct) < 0.1) ? (
+     final_gain = 1.0;
+     gain = 1.0;
+     current_gr = 1.0;
+     last_out = in;
+  ) : (
+     current_gr = gain; 
+     final_gain = gain;
+     last_out = in * final_gain; 
+  );
+  
+  final_gain;
+);
+
+// Core DSP Function
+function process_sample(inL, inR) 
+local(band_l_low, band_l_midhigh, band_l_mid, band_l_high, 
+      band_r_low, band_r_midhigh, band_r_mid, band_r_high,
+      g_low_l, g_low_r, g_mid_l, g_mid_r, g_high_l, g_high_r,
+      sum_l, sum_r, any_solo,
+      sum_l_dry, sum_r_dry,
+      env_l_low, env_r_low, env_l_mid, env_r_mid, env_l_high, env_r_high,
+      link_l_low, link_r_low, link_l_mid, link_r_mid, link_l_high, link_r_high)
+(
+  // --- CROSSOVER ---
+  xo_mode == 0 ? (
+    // ANALOG (Linkwitz-Riley)
+    slope_mode == 1 ? (
+      // 24dB/oct (LR4)
+      xo1_l_lp_f1.svf_process(inL); xo1_l_lp_f2.svf_process(xo1_l_lp_f1.lp);
+      band_l_low = xo1_l_lp_f2.lp;
+      xo1_l_hp_f1.svf_process(inL); xo1_l_hp_f2.svf_process(xo1_l_hp_f1.hp);
+      band_l_midhigh = xo1_l_hp_f2.hp;
+
+      xo1_r_lp_f1.svf_process(inR); xo1_r_lp_f2.svf_process(xo1_r_lp_f1.lp);
+      band_r_low = xo1_r_lp_f2.lp;
+      xo1_r_hp_f1.svf_process(inR); xo1_r_hp_f2.svf_process(xo1_r_hp_f1.hp);
+      band_r_midhigh = xo1_r_hp_f2.hp;
+      
+      xo2_l_lp_f1.svf_process(band_l_midhigh); xo2_l_lp_f2.svf_process(xo2_l_lp_f1.lp);
+      band_l_mid = xo2_l_lp_f2.lp;
+      xo2_l_hp_f1.svf_process(band_l_midhigh); xo2_l_hp_f2.svf_process(xo2_l_hp_f1.hp);
+      band_l_high = xo2_l_hp_f2.hp;
+      
+      xo2_r_lp_f1.svf_process(band_r_midhigh); xo2_r_lp_f2.svf_process(xo2_r_lp_f1.lp);
+      band_r_mid = xo2_r_lp_f2.lp;
+      xo2_r_hp_f1.svf_process(band_r_midhigh); xo2_r_hp_f2.svf_process(xo2_r_hp_f1.hp);
+      band_r_high = xo2_r_hp_f2.hp;
+    ) : (
+      // 12dB/oct (LR2)
+      xo1_l_lp_f1.svf_process(inL); band_l_low = xo1_l_lp_f1.lp;
+      xo1_l_hp_f1.svf_process(inL); band_l_midhigh = xo1_l_hp_f1.hp;
+      xo1_r_lp_f1.svf_process(inR); band_r_low = xo1_r_lp_f1.lp;
+      xo1_r_hp_f1.svf_process(inR); band_r_midhigh = xo1_r_hp_f1.hp;
+
+      xo2_l_lp_f1.svf_process(band_l_midhigh); band_l_mid = -xo2_l_lp_f1.lp; // Invert for LR2 Sum
+      xo2_l_hp_f1.svf_process(band_l_midhigh); band_l_high = xo2_l_hp_f1.hp;
+      xo2_r_lp_f1.svf_process(band_r_midhigh); band_r_mid = -xo2_r_lp_f1.lp; // Invert for LR2 Sum
+      xo2_r_hp_f1.svf_process(band_r_midhigh); band_r_high = xo2_r_hp_f1.hp;
+
+      // Update secondary states
+      xo1_l_lp_f2.svf_process(xo1_l_lp_f1.lp); xo1_l_hp_f2.svf_process(xo1_l_hp_f1.hp);
+      xo1_r_lp_f2.svf_process(xo1_r_lp_f1.lp); xo1_r_hp_f2.svf_process(xo1_r_hp_f1.hp);
+      xo2_l_lp_f2.svf_process(xo2_l_lp_f1.lp); xo2_l_hp_f2.svf_process(xo2_l_hp_f1.hp);
+      xo2_r_lp_f2.svf_process(xo2_r_lp_f1.lp); xo2_r_hp_f2.svf_process(xo2_r_hp_f1.hp);
+    );
+  ) : (
+    // Transparent Crossover Mode
+    slope_mode == 1 ? (
+      // 24dB/oct
+      xo1_l_lp_f1.svf_process(inL); xo1_l_lp_f2.svf_process(xo1_l_lp_f1.lp);
+      band_l_low = xo1_l_lp_f2.lp;
+      xo1_r_lp_f1.svf_process(inR); xo1_r_lp_f2.svf_process(xo1_r_lp_f1.lp);
+      band_r_low = xo1_r_lp_f2.lp;
+    ) : (
+      // 12dB/oct
+      xo1_l_lp_f1.svf_process(inL); band_l_low = xo1_l_lp_f1.lp;
+      xo1_r_lp_f1.svf_process(inR); band_r_low = xo1_r_lp_f1.lp;
+      // Update secondary states
+      xo1_l_lp_f2.svf_process(xo1_l_lp_f1.lp); xo1_r_lp_f2.svf_process(xo1_r_lp_f1.lp);
+    );
+    band_l_midhigh = inL - band_l_low;
+    band_r_midhigh = inR - band_r_low;
+
+    slope_mode == 1 ? (
+      xo2_l_lp_f1.svf_process(band_l_midhigh); xo2_l_lp_f2.svf_process(xo2_l_lp_f1.lp);
+      band_l_mid = xo2_l_lp_f2.lp;
+      xo2_r_lp_f1.svf_process(band_r_midhigh); xo2_r_lp_f2.svf_process(xo2_r_lp_f1.lp);
+      band_r_mid = xo2_r_lp_f2.lp;
+    ) : (
+      xo2_l_lp_f1.svf_process(band_l_midhigh); band_l_mid = xo2_l_lp_f1.lp;
+      xo2_r_lp_f1.svf_process(band_r_midhigh); band_r_mid = xo2_r_lp_f1.lp;
+      // Update secondary states
+      xo2_l_lp_f2.svf_process(xo2_l_lp_f1.lp); xo2_r_lp_f2.svf_process(xo2_r_lp_f1.lp);
+    );
+    band_l_high = band_l_midhigh - band_l_mid;
+    band_r_high = band_r_midhigh - band_r_mid;
+    
+  );
+
+  // Capture Dry Sum
+  sum_l_dry = band_l_low + band_l_mid + band_l_high;
+  sum_r_dry = band_r_low + band_r_mid + band_r_high;
+
+  // --- SHAPING ---
+  
+  // LOW BAND
+  band_l_low *= cur_gain_low; band_r_low *= cur_gain_low;
+  
+  // Sidechain HP
+  sc_l_filt = sc_hp_l.svf_process(band_l_low); sc_l_filt = sc_hp_l.hp;
+  sc_r_filt = sc_hp_r.svf_process(band_r_low); sc_r_filt = sc_hp_r.hp;
+  
+  sc_in_l = sc_l_filt * cur_sc_mix + band_l_low * (1 - cur_sc_mix);
+  sc_in_r = sc_r_filt * cur_sc_mix + band_r_low * (1 - cur_sc_mix);
+
+  // Stereo Link Calculation
+  env_l_low = abs(sc_in_l);
+  env_r_low = abs(sc_in_r);
+  common_env_low = max(env_l_low, env_r_low);
+  link_l_low = common_env_low * stereo_link_ratio + env_l_low * (1 - stereo_link_ratio);
+  link_r_low = common_env_low * stereo_link_ratio + env_r_low * (1 - stereo_link_ratio);
+
+  g_low_l = ts_low_l.ts_process(band_l_low, link_l_low, cur_att_low, cur_sus_low);
+  g_low_r = ts_low_r.ts_process(band_r_low, link_r_low, cur_att_low, cur_sus_low);
+  
+  band_l_low *= g_low_l; band_r_low *= g_low_r;
+  
+  // MID BAND
+  band_l_mid *= cur_gain_mid; band_r_mid *= cur_gain_mid;
+  
+  env_l_mid = abs(band_l_mid);
+  env_r_mid = abs(band_r_mid);
+  common_env_mid = max(env_l_mid, env_r_mid);
+  link_l_mid = common_env_mid * stereo_link_ratio + env_l_mid * (1 - stereo_link_ratio);
+  link_r_mid = common_env_mid * stereo_link_ratio + env_r_mid * (1 - stereo_link_ratio);
+
+  g_mid_l = ts_mid_l.ts_process(band_l_mid, link_l_mid, cur_att_mid, cur_sus_mid);
+  g_mid_r = ts_mid_r.ts_process(band_r_mid, link_r_mid, cur_att_mid, cur_sus_mid);
+
+  band_l_mid *= g_mid_l; band_r_mid *= g_mid_r;
+  
+  // HIGH BAND
+  band_l_high *= cur_gain_high; band_r_high *= cur_gain_high;
+
+  env_l_high = abs(band_l_high);
+  env_r_high = abs(band_r_high);
+  common_env_high = max(env_l_high, env_r_high);
+  link_l_high = common_env_high * stereo_link_ratio + env_l_high * (1 - stereo_link_ratio);
+  link_r_high = common_env_high * stereo_link_ratio + env_r_high * (1 - stereo_link_ratio);
+
+  g_high_l = ts_high_l.ts_process(band_l_high, link_l_high, cur_att_high, cur_sus_high);
+  g_high_r = ts_high_r.ts_process(band_r_high, link_r_high, cur_att_high, cur_sus_high);
+  
+  band_l_high *= g_high_l; band_r_high *= g_high_r;
+  
+  // --- SUMMING ---
+  sum_l = 0; sum_r = 0;
+  any_solo = solo_low + solo_mid + solo_high;
+  
+  any_solo > 0 ? (
+    solo_low ? ( sum_l += band_l_low; sum_r += band_r_low; );
+    solo_mid ? ( sum_l += band_l_mid; sum_r += band_r_mid; );
+    solo_high ? ( sum_l += band_l_high; sum_r += band_r_high; );
+  ) : (
+    mute_low == 0 ? ( sum_l += band_l_low; sum_r += band_r_low; );
+    mute_mid == 0 ? ( sum_l += band_l_mid; sum_r += band_r_mid; );
+    mute_high == 0 ? ( sum_l += band_l_high; sum_r += band_r_high; );
+  );
+
+  // Apply Mix and Output Gain
+  sum_l = (sum_l * cur_out_gain) * cur_mix_wet + sum_l_dry * (1 - cur_mix_wet);
+  sum_r = (sum_r * cur_out_gain) * cur_mix_wet + sum_r_dry * (1 - cur_mix_wet);
+
+  // Update GR History
+  // gr_hist_buf[gr_hist_ptr] = ...
+
+
+  // Soft Clip
+  soft_clip ? (
+    sum_l = max(-1.5, min(1.5, sum_l));
+    sum_r = max(-1.5, min(1.5, sum_r));
+    sum_l = fast_tanh(sum_l);
+    sum_r = fast_tanh(sum_r);
+  );
+
+  out_l = sum_l;
+  out_r = sum_r;
+);
+
+// Memory Allocation & Init
+xo1_l_lp_f1.svf_init(); xo1_l_lp_f2.svf_init(); 
+xo1_l_hp_f1.svf_init(); xo1_l_hp_f2.svf_init(); 
+xo1_r_lp_f1.svf_init(); xo1_r_lp_f2.svf_init();
+xo1_r_hp_f1.svf_init(); xo1_r_hp_f2.svf_init();
+
+xo2_l_lp_f1.svf_init(); xo2_l_lp_f2.svf_init(); 
+xo2_l_hp_f1.svf_init(); xo2_l_hp_f2.svf_init(); 
+xo2_r_lp_f1.svf_init(); xo2_r_lp_f2.svf_init();
+xo2_r_hp_f1.svf_init(); xo2_r_hp_f2.svf_init();
+
+ts_low_l.ts_init(); ts_low_r.ts_init();
+ts_mid_l.ts_init(); ts_mid_r.ts_init();
+ts_high_l.ts_init(); ts_high_r.ts_init();
+
+// LUFS Filters Init
+lufs_in_hs_l.bq_init(); lufs_in_hs_r.bq_init();
+lufs_in_hp_l.svf_init(); lufs_in_hp_r.svf_init();
+
+lufs_out_hs_l.bq_init(); lufs_out_hs_r.bq_init();
+lufs_out_hp_l.svf_init(); lufs_out_hp_r.svf_init();
+
+// --- Filter Helpers ---
+function reset_xo_filters() (
+  xo1_l_lp_f1.svf_init(); xo1_l_lp_f1.d1 = DENORM; xo1_l_lp_f1.d2 = DENORM;
+  xo1_l_lp_f2.svf_init(); xo1_l_lp_f2.d1 = DENORM; xo1_l_lp_f2.d2 = DENORM; 
+  xo1_l_hp_f1.svf_init(); xo1_l_hp_f1.d1 = DENORM; xo1_l_hp_f1.d2 = DENORM; 
+  xo1_l_hp_f2.svf_init(); xo1_l_hp_f2.d1 = DENORM; xo1_l_hp_f2.d2 = DENORM; 
+  
+  xo1_r_lp_f1.svf_init(); xo1_r_lp_f1.d1 = DENORM; xo1_r_lp_f1.d2 = DENORM;
+  xo1_r_lp_f2.svf_init(); xo1_r_lp_f2.d1 = DENORM; xo1_r_lp_f2.d2 = DENORM;
+  xo1_r_hp_f1.svf_init(); xo1_r_hp_f1.d1 = DENORM; xo1_r_hp_f1.d2 = DENORM;
+  xo1_r_hp_f2.svf_init(); xo1_r_hp_f2.d1 = DENORM; xo1_r_hp_f2.d2 = DENORM;
+
+  xo2_l_lp_f1.svf_init(); xo2_l_lp_f1.d1 = DENORM; xo2_l_lp_f1.d2 = DENORM; 
+  xo2_l_lp_f2.svf_init(); xo2_l_lp_f2.d1 = DENORM; xo2_l_lp_f2.d2 = DENORM; 
+  xo2_l_hp_f1.svf_init(); xo2_l_hp_f1.d1 = DENORM; xo2_l_hp_f1.d2 = DENORM; 
+  xo2_l_hp_f2.svf_init(); xo2_l_hp_f2.d1 = DENORM; xo2_l_hp_f2.d2 = DENORM; 
+  
+  xo2_r_lp_f1.svf_init(); xo2_r_lp_f1.d1 = DENORM; xo2_r_lp_f1.d2 = DENORM;
+  xo2_r_lp_f2.svf_init(); xo2_r_lp_f2.d1 = DENORM; xo2_r_lp_f2.d2 = DENORM;
+  xo2_r_hp_f1.svf_init(); xo2_r_hp_f1.d1 = DENORM; xo2_r_hp_f1.d2 = DENORM;
+  xo2_r_hp_f2.svf_init(); xo2_r_hp_f2.d1 = DENORM; xo2_r_hp_f2.d2 = DENORM;
+);
+
+function reset_dsp_state() (
+  // Oversampling
+  os_L_up.os_init(); os_R_up.os_init();
+  os_L_down.os_init(); os_R_down.os_init();
+  
+  os4_L_up_0.os_init(); os4_L_up_1.os_init();
+  os4_R_up_0.os_init(); os4_R_up_1.os_init();
+  os4_L_down_0.os_init(); os4_L_down_1.os_init();
+  os4_R_down_0.os_init(); os4_R_down_1.os_init();
+  
+  os8_L_up_0.os_init(); os8_L_up_1.os_init(); os8_L_up_2.os_init(); os8_L_up_3.os_init();
+  os8_R_up_0.os_init(); os8_R_up_1.os_init(); os8_R_up_2.os_init(); os8_R_up_3.os_init();
+  os8_L_down_0.os_init(); os8_L_down_1.os_init(); os8_L_down_2.os_init(); os8_L_down_3.os_init();
+  os8_R_down_0.os_init(); os8_R_down_1.os_init(); os8_R_down_2.os_init(); os8_R_down_3.os_init();
+
+  // Crossover (Use helper to ensure Anti-Denorm)
+  reset_xo_filters();
+
+  // Transient Shapers
+  ts_low_l.ts_init(); ts_low_r.ts_init();
+  ts_mid_l.ts_init(); ts_mid_r.ts_init();
+  ts_high_l.ts_init(); ts_high_r.ts_init();
+
+  // LUFS
+  lufs_in_hs_l.bq_init(); lufs_in_hs_r.bq_init();
+  lufs_in_hp_l.svf_init(); lufs_in_hp_l.d1 = DENORM; lufs_in_hp_l.d2 = DENORM;
+  lufs_in_hp_r.svf_init(); lufs_in_hp_r.d1 = DENORM; lufs_in_hp_r.d2 = DENORM;
+  lufs_out_hs_l.bq_init(); lufs_out_hs_r.bq_init();
+  lufs_out_hp_l.svf_init(); lufs_out_hp_l.d1 = DENORM; lufs_out_hp_l.d2 = DENORM;
+  lufs_out_hp_r.svf_init(); lufs_out_hp_r.d1 = DENORM; lufs_out_hp_r.d2 = DENORM;
+  
+  // Sidechain HP Filters (Low Band Only)
+  sc_hp_l.svf_init(); sc_hp_l.d1 = DENORM; sc_hp_l.d2 = DENORM;
+  sc_hp_r.svf_init(); sc_hp_r.d1 = DENORM; sc_hp_r.d2 = DENORM;
+
+  // Delta Buffer Crossfade
+  delta_read_offset_target = 0;
+  delta_read_offset_fade = 0;
+  delta_read_offset_target_fade = 1.0;
+  
+  // Limiter Buffer Anti-Artifact
+  limiter_reset_fade = 1.0;
+  
+  // Bypass Fade
+  smooth_bypass_c = exp(-1 / (0.030 * srate)); // 30ms fade for bypass
+);
+
+
+function reset_os_filters() (
+  os_L_up.os_init(); os_R_up.os_init();
+  os_L_down.os_init(); os_R_down.os_init();
+  
+  os4_L_up_0.os_init(); os4_L_up_1.os_init();
+  os4_R_up_0.os_init(); os4_R_up_1.os_init();
+  os4_L_down_0.os_init(); os4_L_down_1.os_init();
+  os4_R_down_0.os_init(); os4_R_down_1.os_init();
+  
+  os8_L_up_0.os_init(); os8_L_up_1.os_init(); os8_L_up_2.os_init(); os8_L_up_3.os_init();
+  os8_R_up_0.os_init(); os8_R_up_1.os_init(); os8_R_up_2.os_init(); os8_R_up_3.os_init();
+  os8_L_down_0.os_init(); os8_L_down_1.os_init(); os8_L_down_2.os_init(); os8_L_down_3.os_init();
+  os8_R_down_0.os_init(); os8_R_down_1.os_init(); os8_R_down_2.os_init(); os8_R_down_3.os_init();
+);
+
+function update_dsp() (
+  // Force update from sliders to internal variables
+  xo_low_mid = slider(1);
+  xo_mid_high = slider(2);
+  
+  drive_low = slider(5);
+  att_low = slider(6);
+  sus_low = slider(7);
+  mute_low = slider(8);
+  solo_low = slider(9);
+  bypass_low = slider(10);
+  
+  drive_mid = slider(15);
+  att_mid = slider(16);
+  sus_mid = slider(17);
+  mute_mid = slider(18);
+  solo_mid = slider(19);
+  bypass_mid = slider(20);
+  
+  drive_high = slider(25);
+  att_high = slider(26);
+  sus_high = slider(27);
+  mute_high = slider(28);
+  solo_high = slider(29);
+  bypass_high = slider(30);
+  
+  out_gain = slider(40);
+  dry_wet = slider(41);
+  soft_clip = slider(42);
+  req_os_mode = slider(43);
+  auto_gain = slider(44);
+  req_slope_mode = slider(45);
+  req_limiter_on = slider(46);
+  sc_hp_on = slider(47);
+  req_delta_mode = slider(48);
+  stereo_link_ratio = stereo_link / 100;
+  req_xo_mode = slider(50);
+
+  xo1_freq = xo_low_mid;
+  xo2_freq = xo_mid_high;
+
+  // Fade increment (40ms)
+  switch_inc = 1 / (0.040 * srate);
+
+  // Validate frequencies
+  xo1_freq >= xo2_freq ? (
+    xo1_freq = xo2_freq - 100;
+    slider(1) = xo1_freq; // Push back constraint
+  );
+
+  // Gains
+  gain_low = db2lin(drive_low);
+  gain_mid = db2lin(drive_mid);
+  gain_high = db2lin(drive_high);
+  
+  // Calculate Auto-Gain
+  rms_smooth_coeff = exp(-1 / (0.4 * srate)); // 400ms RMS window
+  ag_change_coeff = exp(-1 / (0.5 * srate));  // 500ms gain smoothing
+
+  lim_att = exp(-1 / (0.001 * srate)); // 1ms attack
+  lim_rel = exp(-1 / (0.050 * srate)); // 50ms release
+  limit_lin = db2lin(-0.3);
+  
+  // Limiter Lookahead
+  lim_lookahead_ms = 5;
+  lim_buf_len = floor(lim_lookahead_ms * 0.001 * srate);
+  
+  // Ensure buffer fits
+  lim_buf_len > BUF_SZ ? lim_buf_len = BUF_SZ;
+  
+  // Oversampling check (Active State)
+  use_os = os_mode > 0;
+  os_rate = os_mode == 1 ? 2 : (os_mode == 2 ? 4 : 8); 
+  proc_sr = use_os ? srate * os_rate : srate;
+
+  // --- DYNAMIC PDC LOGIC ---
+  // Calculate Target Latency
+  current_lim_delay = limiter_on ? lim_buf_len : 0;
+  current_os_delay = use_os ? (os_mode == 1 ? 7 : (os_mode == 2 ? 18 : 35)) : 0;
+  
+  // Defer PDC Update:
+  pending_pdc_latency = current_lim_delay + current_os_delay;
+  
+  // Only update host if stopped
+  play_state == 0 ? (
+     pdc_delay = pending_pdc_latency;
+  );
+  
+  pdc_bot_ch = 0; pdc_top_ch = 2;
+
+  
+  peak_decay = exp(-1 / (0.2 * srate));
+  clip_hold_samples = max(1, floor(0.3 * srate));
+
+  target_out_gain = db2lin(out_gain);
+  target_mix_wet = dry_wet / 100;
+
+  // Update LUFS Filters (Stage 1: High Shelf)
+  lufs_in_hs_l.bq_set_hs_rbj(1500, 4.0, 0.707, srate); 
+  lufs_in_hs_r.bq_set_hs_rbj(1500, 4.0, 0.707, srate);
+  lufs_out_hs_l.bq_set_hs_rbj(1500, 4.0, 0.707, srate); 
+  lufs_out_hs_r.bq_set_hs_rbj(1500, 4.0, 0.707, srate);
+  
+  // Update LUFS Filters (Stage 2: High Pass)
+  lufs_in_hp_l.svf_set_freq(100, 0.707, srate); 
+  lufs_in_hp_r.svf_set_freq(100, 0.707, srate);
+  lufs_out_hp_l.svf_set_freq(100, 0.707, srate); 
+  lufs_out_hp_r.svf_set_freq(100, 0.707, srate);
+  
+  // Update Sidechain High Pass Filter
+  sc_hp_l.svf_set_freq(100, 0.707, proc_sr);
+  sc_hp_r.svf_set_freq(100, 0.707, proc_sr);
+
+  // Update Filter Coefficients
+  Q = slope_mode == 1 ? 0.70710678 : 0.5;
+  
+  // SMOOTHING SETUP
+  smooth_gain_c = exp(-1 / (0.010 * srate)); // 10ms for gains
+  smooth_xo_c = exp(-1 / (0.050 * srate));   // 50ms for crossovers
+  
+  // Calculate Target Parameters
+  target_gain_low = bypass_low ? 1.0 : db2lin(drive_low);
+  target_att_low  = bypass_low ? 0.0 : att_low;
+  target_sus_low  = bypass_low ? 0.0 : sus_low;
+  
+  target_gain_mid = bypass_mid ? 1.0 : db2lin(drive_mid);
+  target_att_mid  = bypass_mid ? 0.0 : att_mid;
+  target_sus_mid  = bypass_mid ? 0.0 : sus_mid;
+  
+  target_gain_high = bypass_high ? 1.0 : db2lin(drive_high);
+  target_att_high  = bypass_high ? 0.0 : att_high;
+  target_sus_high  = bypass_high ? 0.0 : sus_high;
+  
+  target_sc_mix = sc_hp_on ? 1.0 : 0.0;
+  
+  target_xo1 = xo1_freq;
+  target_xo2 = xo2_freq;
+
+  // Initialize Current Values
+  cur_gain_low == 0 ? (
+      cur_gain_low = target_gain_low; 
+      cur_gain_mid = target_gain_mid; 
+      cur_gain_high = target_gain_high;
+      
+      cur_att_low = target_att_low; cur_sus_low = target_sus_low;
+      cur_att_mid = target_att_mid; cur_sus_mid = target_sus_mid;
+      cur_att_high = target_att_high; cur_sus_high = target_sus_high;
+      
+      cur_sc_mix = target_sc_mix;
+      
+      cur_xo1 = target_xo1;
+      cur_xo2 = target_xo2;
+      
+      cur_out_gain = target_out_gain;
+      cur_mix_wet = target_mix_wet;
+  );
+
+  // Initialize Filter States
+  xo1_l_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_l_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_r_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_r_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+
+  xo2_l_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_l_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_r_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_r_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+
+  // Shapers
+  ts_low_l.ts_update_coeffs(proc_sr); ts_low_r.ts_update_coeffs(proc_sr);
+  ts_mid_l.ts_update_coeffs(proc_sr); ts_mid_r.ts_update_coeffs(proc_sr);
+  ts_high_l.ts_update_coeffs(proc_sr); ts_high_r.ts_update_coeffs(proc_sr);
+);
+
+// GUI Functions
+
+// Color Definitions
+function set_col_bg() ( gfx_r=0.12; gfx_g=0.12; gfx_b=0.14; gfx_a=1; );
+function set_col_panel() ( gfx_r=0.18; gfx_g=0.18; gfx_b=0.20; gfx_a=1; );
+function set_col_txt() ( gfx_r=0.9; gfx_g=0.9; gfx_b=0.9; gfx_a=1; );
+function set_col_knob() ( gfx_r=0.25; gfx_g=0.27; gfx_b=0.30; gfx_a=1; );
+function set_col_ind() ( gfx_r=0.2; gfx_g=0.9; gfx_b=1.0; gfx_a=1.0; ); // Cyan indicator
+
+// Waveform Color Definitions
+function set_col_low() ( gfx_r=0.0; gfx_g=0.5; gfx_b=0.6; gfx_a=0.15; );
+function set_col_mid() ( gfx_r=0.5; gfx_g=0.4; gfx_b=0.7; gfx_a=0.15; );
+function set_col_high() ( gfx_r=0.8; gfx_g=0.4; gfx_b=0.3; gfx_a=0.15; );
+function set_col_handle() ( gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=0.5; );
+
+// Coordinate Helper Functions
+function freq_to_x(f) ( wave_x + (log(f) - min_log) * scale_log; );
+function x_to_freq(x) ( exp(((x - wave_x) / scale_log) + min_log); );
+
+// Draw Stereo Gain Reduction Meter
+function draw_meter(val_l, val_r, cx, cy, h) 
+local(db_l, db_r, h_bar_l, h_bar_r, str_w, str_h, val_str, max_val, i, tick_y, tick_db)
+(
+  // Draw Background
+  gfx_r=0.05; gfx_g=0.05; gfx_b=0.05; gfx_a=1;
+  gfx_rect(cx - 8, cy, 16, h); // Wider for stereo (16px)
+  
+  // Left Channel
+  val_l < 0.999 ? (
+    db_l = 20 * log10(val_l);
+    h_bar_l = (abs(db_l) / 24) * h;
+    h_bar_l = min(h, h_bar_l);
+    
+    gfx_r=1.0; gfx_g=0.8; gfx_b=0.0; gfx_a=1;
+    gfx_rect(cx - 7, cy, 6, h_bar_l);
+  );
+
+  // Right Channel
+  val_r < 0.999 ? (
+    db_r = 20 * log10(val_r);
+    h_bar_r = (abs(db_r) / 24) * h;
+    h_bar_r = min(h, h_bar_r);
+    
+    gfx_r=1.0; gfx_g=0.8; gfx_b=0.0; gfx_a=1;
+    gfx_rect(cx + 1, cy, 6, h_bar_r);
+  );
+  
+  // Frame
+  gfx_r=0.4; gfx_g=0.4; gfx_b=0.4; gfx_a=1;
+  gfx_rect(cx - 8, cy, 16, h, 0);
+  
+  // Ticks and labels
+  gfx_setfont(1, "Arial, Helvetica, sans-serif", 9);
+  i = 0;
+  while (i <= 24) (
+    tick_y = cy + (i / 24) * h;
+    gfx_a = 0.3;
+    gfx_line(cx - 12, tick_y, cx - 8, tick_y);
+    gfx_line(cx + 8, tick_y, cx + 12, tick_y);
+    
+    (i % 6 == 0) ? (
+      gfx_a = 0.5;
+      sprintf(tick_db, "%d", -i);
+      gfx_measurestr(tick_db, str_w, str_h);
+      gfx_x = cx - 14 - str_w;
+      gfx_y = tick_y - str_h/2;
+      gfx_drawstr(tick_db);
+    );
+    i += 6;
+  );
+
+  // Center divider
+  gfx_a=0.3;
+  gfx_line(cx, cy, cx, cy + h);
+
+  // Draw Gain Reduction Histogram
+
+
+  // Draw Reduction Value
+  max_val = min(val_l, val_r);
+  db_l = max_val < 0.999 ? 20 * log10(max_val) : 0.0;
+  sprintf(val_str, "%.1f", db_l < -0.1 ? db_l : 0.0);
+  
+  gfx_setfont(1, "Arial, Helvetica, sans-serif", 12);
+  gfx_measurestr(val_str, str_w, str_h);
+  gfx_x = cx - str_w/2; 
+  gfx_y = cy + h + 4; // Below meter
+  
+  // Set Text Color
+  db_l < -0.1 ? (gfx_r=1; gfx_g=0.8; gfx_b=0;) : (gfx_r=0.5; gfx_g=0.5; gfx_b=0.5;);
+  gfx_drawstr(val_str);
+);
+
+function draw_peak_meter(val_l, val_r, x, y, w, h, show_labels)
+local(db_l, db_r, bar_h_l, bar_h_r, i, tick_y, tick_db, str_w, str_h)
+(
+  db_l = lin2db(val_l);
+  db_l = max(-48, min(0, db_l));
+  bar_h_l = (db_l + 48) / 48 * h;
+
+  db_r = lin2db(val_r);
+  db_r = max(-48, min(0, db_r));
+  bar_h_r = (db_r + 48) / 48 * h;
+
+  // BG
+  gfx_r=0.06; gfx_g=0.06; gfx_b=0.06; gfx_a=1;
+  gfx_rect(x, y, w, h);
+  
+  // Bars (Stereo)
+  gfx_r=0.2; gfx_g=0.8; gfx_b=0.3; gfx_a=1;
+  gfx_rect(x + 1, y + h - bar_h_l, (w/2) - 1, bar_h_l);
+  gfx_rect(x + w/2, y + h - bar_h_r, (w/2) - 1, bar_h_r);
+
+  // Labels
+  show_labels ? (
+    gfx_setfont(1, "Arial, Helvetica, sans-serif", 9);
+    i = 0;
+    while (i <= 48) (
+      tick_y = y + (i / 48) * h;
+      gfx_r=0.4; gfx_g=0.4; gfx_b=0.4; gfx_a=0.5;
+      gfx_line(x - 4, tick_y, x, tick_y);
+      gfx_line(x + w, tick_y, x + w + 4, tick_y);
+      
+      (i % 12 == 0) ? (
+        sprintf(tick_db, "%d", -i);
+        gfx_measurestr(tick_db, str_w, str_h);
+        gfx_x = x - 6 - str_w;
+        gfx_y = tick_y - str_h/2;
+        gfx_drawstr(tick_db);
+      );
+      i += 12;
+    );
+  );
+
+  // Frame
+  gfx_r=0.4; gfx_g=0.4; gfx_b=0.4; gfx_a=1;
+  gfx_rect(x, y, w, h, 0);
+  gfx_a=0.3;
+  gfx_line(x + w/2, y, x + w/2, y + h);
+);
+
+// Draw Knob
+function draw_knob(val, min_val, max_val, step, cx, cy, r, label, param_idx, default_val) 
+local(norm_val, angle, k_x, k_y, drag_speed, new_val, str_w, str_h, delta_y, is_hover, start_ang, end_ang, val_ang, arc_r, i)
+(
+  is_hover = abs(mouse_x - cx) < r && abs(mouse_y - cy) < r;
+
+  // Reset drag on release
+  !(mouse_cap & 1) && drag_knob_id == param_idx ? drag_knob_id = 0;
+
+  // Interaction
+  mouse_cap & 1 ? (
+    !drag_knob_id || drag_knob_id == param_idx ? (
+      is_hover ? (
+        // Double Click Check
+        !last_mouse_cap ? ( // Click start
+           (time_precise() - last_click_time < 0.3) && (last_click_id == param_idx) ? (
+              // Handle double click
+              new_val = default_val;
+              slider(param_idx) = new_val;
+              // Update slider automation
+              param_idx == 5 ? slider_automate(drive_low);
+              param_idx == 6 ? slider_automate(att_low);
+              param_idx == 7 ? slider_automate(sus_low);
+              param_idx == 15 ? slider_automate(drive_mid);
+              param_idx == 16 ? slider_automate(att_mid);
+              param_idx == 17 ? slider_automate(sus_mid);
+              param_idx == 25 ? slider_automate(drive_high);
+              param_idx == 26 ? slider_automate(att_high);
+              param_idx == 27 ? slider_automate(sus_high);
+              param_idx == 49 ? slider_automate(stereo_link);
+              
+              update_dsp();
+
+              // Reset smoothing
+              param_idx == 5 ? cur_gain_low = target_gain_low;
+              param_idx == 6 ? cur_att_low = target_att_low;
+              param_idx == 7 ? cur_sus_low = target_sus_low;
+              
+              param_idx == 15 ? cur_gain_mid = target_gain_mid;
+              param_idx == 16 ? cur_att_mid = target_att_mid;
+              param_idx == 17 ? cur_sus_mid = target_sus_mid;
+              
+              param_idx == 25 ? cur_gain_high = target_gain_high;
+              param_idx == 26 ? cur_att_high = target_att_high;
+              param_idx == 27 ? cur_sus_high = target_sus_high;
+
+              val = new_val;
+              drag_knob_id = 0; // Cancel drag
+              last_click_time = 0; // Reset timer
+           ) : (
+              // Single Click / Start Drag
+              drag_knob_id = param_idx;
+              drag_start_val = slider(param_idx); 
+              drag_start_y = mouse_y;             
+              gfx_setcursor(32512, "custom");
+              
+              last_click_time = time_precise();
+              last_click_id = param_idx;
+           );
+        );
+      );
+    );
+  );
+  
+  drag_knob_id == param_idx ? (
+    drag_speed = (max_val - min_val) / (mouse_cap & 8 ? 2000 : 200); // 10x slower with Shift
+    delta_y = drag_start_y - mouse_y;       
+    new_val = drag_start_val + (delta_y * drag_speed);
+    
+    new_val = min(max_val, max(min_val, new_val));
+    step > 0 ? new_val = floor(new_val / step + 0.5) * step;
+    
+    // Update Slider
+    slider(param_idx) = new_val;
+    
+    // Automate
+    param_idx == 5 ? slider_automate(drive_low);
+    param_idx == 6 ? slider_automate(att_low);
+    param_idx == 7 ? slider_automate(sus_low);
+    param_idx == 15 ? slider_automate(drive_mid);
+    param_idx == 16 ? slider_automate(att_mid);
+    param_idx == 17 ? slider_automate(sus_mid);
+    param_idx == 25 ? slider_automate(drive_high);
+    param_idx == 26 ? slider_automate(att_high);
+    param_idx == 27 ? slider_automate(sus_high);
+    param_idx == 41 ? slider_automate(dry_wet);
+    param_idx == 40 ? slider_automate(out_gain);
+    param_idx == 49 ? slider_automate(stereo_link); 
+    
+    val = new_val;
+    
+    // Force DSP update immediately while dragging
+    update_dsp();
+  );
+
+  // Calculate knob angle
+  start_ang = -3.92699; 
+  end_ang = 0.785398;
+  
+  // Orientation Offset
+  arc_ofs = 1.5707963;
+
+  norm_val = (val - min_val) / (max_val - min_val);
+  val_ang = start_ang + (norm_val * (end_ang - start_ang));
+  arc_r = r + 3;
+
+  // Draw Arc Background
+  gfx_r=0.25; gfx_g=0.25; gfx_b=0.25; gfx_a=1.0;
+  i = 0; loop(3, 
+    gfx_arc(cx, cy, arc_r+i, start_ang + arc_ofs, end_ang + arc_ofs); 
+    i+=0.5; 
+  );
+
+  // Draw Active Arc
+  param_idx >= 5 && param_idx <= 7 ? set_col_low() :
+  param_idx >= 15 && param_idx <= 17 ? set_col_mid() :
+  param_idx >= 25 && param_idx <= 27 ? set_col_high() :
+  set_col_ind(); 
+  
+  gfx_a = 0.8; // Override alpha for visibility
+  
+  // Arc Drawing Logic
+  min_val < 0 ? (
+     // Bipolar Mode
+     zero_norm = (0 - min_val) / (max_val - min_val);
+     origin_ang = start_ang + (zero_norm * (end_ang - start_ang));
+  ) : (
+     // Unipolar Mode
+     origin_ang = start_ang;
+  );
+  
+  arc_start = min(val_ang, origin_ang);
+  arc_end = max(val_ang, origin_ang);
+  
+  // Minimum Visibility Check
+  abs(val_ang - origin_ang) > 0.01 ? (
+    i = 0; loop(3, 
+      gfx_arc(cx, cy, arc_r+i, arc_start + arc_ofs, arc_end + arc_ofs); 
+      i+=0.5; 
+    );
+  );
+
+  // Draw Knob Body
+  set_col_knob();
+  gfx_circle(cx, cy, r, 1); // Filled
+  
+  // Draw Shading
+  gfx_r=0.0; gfx_g=0.0; gfx_b=0.0; gfx_a=0.2;
+  gfx_circle(cx, cy, r, 0); // Outer edge dark
+  gfx_a=0.1;
+  gfx_circle(cx, cy, r*0.85, 0); // Inner ring
+  
+  // Draw Indicator Line
+  param_idx >= 5 && param_idx <= 7 ? set_col_low() :
+  param_idx >= 15 && param_idx <= 17 ? set_col_mid() :
+  param_idx >= 25 && param_idx <= 27 ? set_col_high() :
+  set_col_ind(); 
+  
+  gfx_a=1.0; // Solid indicator
+  
+  k_x = cx + cos(val_ang) * (r * 0.8);
+  k_y = cy + sin(val_ang) * (r * 0.8);
+  
+  // Draw Line
+  gfx_line(cx, cy, k_x, k_y);
+  gfx_line(cx + 1, cy, k_x + 1, k_y);
+  gfx_line(cx - 1, cy, k_x - 1, k_y);
+  gfx_line(cx, cy + 1, k_x, k_y + 1);
+  gfx_line(cx, cy - 1, k_x, k_y - 1);
+  
+  // Dot at the tip (slightly larger)
+  gfx_circle(k_x, k_y, 3, 1);
+
+  // Text
+  set_col_txt();
+  // Set Font
+  gfx_setfont(1, "Arial, Helvetica, sans-serif", 16); 
+  
+  gfx_measurestr(label, str_w, str_h);
+  gfx_x = cx - str_w/2; gfx_y = cy + r + 8;
+  gfx_drawstr(label);
+  
+  sprintf(#val_str, "%.1f", val);
+  gfx_measurestr(#val_str, str_w, str_h);
+  gfx_x = cx - str_w/2; gfx_y = cy + r + 24;
+  gfx_r=0.6; gfx_g=0.6; gfx_b=0.6;
+  gfx_drawstr(#val_str);
+);
+
+
+
+// --- GUI HELPERS ---
+function SetColor(r, g, b, a) ( gfx_r=r; gfx_g=g; gfx_b=b; gfx_a=a; );
+function DrawBox(x, y, w, h, fill) (
+  fill ? gfx_rect(x, y, w, h) : gfx_rect(x, y, w, h, 0);
+);
+function DrawTextCent(x, y, w, h, str) local(str_w, str_h) (
+  gfx_measurestr(str, str_w, str_h);
+  gfx_x = x + (w - str_w) / 2;
+  gfx_y = y + (h - str_h) / 2;
+  gfx_drawstr(str);
+);
+
+function Button(x, y, w, h, label, toggle_state) local(hover, down, result) (
+  gfx_setfont(1, "Arial, Helvetica, sans-serif", 16); // Increased font size inside button
+  hover = mouse_x >= x && mouse_x < x+w && mouse_y >= y && mouse_y < y+h;
+  down = hover && (mouse_cap&1);
+  result = hover && (mouse_cap&1) && !(last_mouse_cap&1);
+
+  SetColor(0.06, 0.06, 0.07, 1);
+  DrawBox(x, y, w, h, 1);
+
+  toggle_state ? (
+    down ? SetColor(0.14, 0.62, 0.32, 1) : hover ? SetColor(0.20, 0.84, 0.44, 1) : SetColor(0.17, 0.75, 0.40, 1);
+  ) : (
+    down ? SetColor(0.16, 0.16, 0.18, 1) : hover ? SetColor(0.24, 0.24, 0.26, 1) : SetColor(0.20, 0.20, 0.22, 1);
+  );
+  DrawBox(x+1, y+1, w-2, h-2, 1);
+
+  toggle_state ? SetColor(0.98, 0.98, 0.98, 0.95) : SetColor(0.90, 0.90, 0.90, 0.85);
+  DrawTextCent(x, y, w, h, label);
+
+  result;
+);
+
+@slider
+update_dsp();
+
+
+
+@block
+// Silence Detection & Recovery
+_wd_now = time_precise();
+_wd_gap = _wd_now - last_block_time;
+last_block_time > 0 && _wd_gap > 0.5 && (play_state & 1) ? ( // 500ms Timeout
+   // Fast Fade-In (10ms)
+   switch_inc = 1 / (0.010 * srate); 
+
+   // Capture offset for Delta Crossfade
+   delta_read_offset_target = current_proc_latency;
+   delta_read_offset_fade = 0; 
+   delta_read_offset_target_fade = 1.0;
+
+   reset_dsp_state(); 
+   
+   // Limiter Fade Reset
+   limiter_reset_fade = 0;
+
+   // Clear buffers
+   memset(lim_buf_l, 0, BUF_SZ);
+   memset(lim_buf_r, 0, BUF_SZ);
+   memset(delta_buf_l, 0, BUF_SZ);
+   memset(delta_buf_r, 0, BUF_SZ);
+   
+   // Reset gains to 1.0
+   cur_gain_low = 1.0; cur_gain_mid = 1.0; cur_gain_high = 1.0;
+   cur_att_low = 0; cur_att_mid = 0; cur_att_high = 0;
+   cur_sus_low = 0; cur_sus_mid = 0; cur_sus_high = 0;
+   
+   switch_state = 2;  // Force "Switch and Fade In" state
+   switch_fade = 0;   // Start fade from silence
+);
+last_block_time = _wd_now;
+
+// Update Host PDC only when stopped
+(play_state == 0 || last_play_state == 0) && pdc_delay != pending_pdc_latency ? (
+   pdc_delay = pending_pdc_latency;
+);
+
+// Handle sample rate changes
+srate != last_srate ? (
+  last_srate = srate;
+  update_dsp(); // Force coeff update
+);
+
+// Clear buffers on start
+play_state & 1 && !(last_play_state & 1) ? (
+   gfx_wave_ptr = 0;
+   memset(gfx_wave_buf, 0, gfx_wave_size);
+   memset(gfx_out_buf, 0, gfx_wave_size);
+   memset(lim_buf_l, 0, BUF_SZ);
+   memset(lim_buf_r, 0, BUF_SZ);
+   memset(delta_buf_l, 0, BUF_SZ);
+   memset(delta_buf_r, 0, BUF_SZ);
+   reset_dsp_state(); // Reset filters to prevent ringing/artifacts
+   limiter_gain = 1.0;
+   out_peak_l = 0;
+   out_peak_r = 0;
+   clip_counter = 0;
+);
+last_play_state = play_state;
+
+// Sample Processing
+@sample
+
+// --- FADE SWITCH LOGIC ---
+// Detect changes in critical modes
+(req_xo_mode != xo_mode || req_limiter_on != limiter_on || req_delta_mode != delta_mode || req_os_mode != os_mode || req_slope_mode != slope_mode) && switch_state == 0 ? (
+   switch_inc = 1 / (0.040 * srate); // Standard 40ms fade for mode switches
+   switch_state = 1; // Start Fade Out
+);
+
+switch_state == 1 ? (
+   switch_fade -= switch_inc;
+   switch_fade <= 0 ? (
+      switch_fade = 0;
+      switch_state = 2; // Switch and Start Fade In
+      
+      // RE-CALCULATE DEPENDENCIES (Before State Update)
+      prev_os_mode = os_mode;
+      prev_slope_mode = slope_mode;
+      
+      // APPLY STATE CHANGES
+      xo_mode = req_xo_mode;
+      limiter_on = req_limiter_on;
+      delta_mode = req_delta_mode;
+      os_mode = req_os_mode;
+      slope_mode = req_slope_mode;
+
+      // RE-CALCULATE DEPENDENCIES
+      Q = slope_mode == 1 ? 0.70710678 : 0.5;
+      use_os = os_mode > 0;
+      os_rate = os_mode == 1 ? 2 : (os_mode == 2 ? 4 : 8); 
+      proc_sr = use_os ? srate * os_rate : srate;
+
+      // Recalculate Dependencies & Compensation
+      lim_lookahead_ms = 5;
+      lim_buf_len = floor(lim_lookahead_ms * 0.001 * srate);
+      lim_buf_len > 10000 ? lim_buf_len = 10000;
+
+      // Update Compensation Delay for new state
+      current_lim_delay = limiter_on ? lim_buf_len : 0;
+      current_os_delay = use_os ? (os_mode == 1 ? 7 : (os_mode == 2 ? 18 : 35)) : 0;
+      
+      // Update Internal Latency IMMEDIATELY for correct Delta/Mix alignment
+      current_proc_latency = current_lim_delay + current_os_delay;
+      
+      // Queue PDC update for next Stop (prevents Host Reset Glitch)
+      pending_pdc_latency = current_proc_latency;
+      
+      // RESET BUFFERS & STATES
+      // Selective Reset Logic to prevent Crossover "Pops"
+      
+      // 1. Oversampling Changed?
+      req_os_mode != prev_os_mode ? (
+        reset_dsp_state(); // Full reset needed as SR changed
+      ) : (
+        // 2. Slope or XO Mode Changed?
+      req_slope_mode != prev_slope_mode || req_xo_mode != prev_xo_mode ? (
+        reset_xo_filters(); // Only reset crossovers
+      ) : (
+          // 3. Limiter Only?
+          // Do NOT reset crossovers or other filters!
+          // Only clear Limiter Buffers (handled below)
+          0;
+        );
+      );
+      
+      limiter_gain = 1.0;
+      memset(delta_buf_l, 0, BUF_SZ);
+      memset(delta_buf_r, 0, BUF_SZ);
+      memset(lim_buf_l, 0, BUF_SZ);
+      memset(lim_buf_r, 0, BUF_SZ);
+      lim_buf_ptr = 0;
+      delta_ptr = 0;
+      
+      // Update filter freqs for new SR
+      xo1_l_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+      xo1_l_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+      xo1_r_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+      xo1_r_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+
+      xo2_l_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+      xo2_l_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+      xo2_r_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+      xo2_r_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+      
+      sc_hp_l.svf_set_freq(100, 0.707, proc_sr);
+      sc_hp_r.svf_set_freq(100, 0.707, proc_sr);
+   );
+);
+
+switch_state == 2 ? (
+   switch_fade += switch_inc;
+   switch_fade >= 1.0 ? (
+      switch_fade = 1.0;
+      switch_state = 0; // Done
+   );
+);
+
+// --- PARAMETER SMOOTHING ---
+// Bypass Fade (30ms)
+cur_gain_low = cur_gain_low * smooth_bypass_c + target_gain_low * (1 - smooth_bypass_c);
+cur_gain_mid = cur_gain_mid * smooth_bypass_c + target_gain_mid * (1 - smooth_bypass_c);
+cur_gain_high = cur_gain_high * smooth_bypass_c + target_gain_high * (1 - smooth_bypass_c);
+
+cur_att_low = cur_att_low * smooth_gain_c + target_att_low * (1 - smooth_gain_c);
+cur_sus_low = cur_sus_low * smooth_gain_c + target_sus_low * (1 - smooth_gain_c);
+
+cur_att_mid = cur_att_mid * smooth_gain_c + target_att_mid * (1 - smooth_gain_c);
+cur_sus_mid = cur_sus_mid * smooth_gain_c + target_sus_mid * (1 - smooth_gain_c);
+
+cur_att_high = cur_att_high * smooth_gain_c + target_att_high * (1 - smooth_gain_c);
+cur_sus_high = cur_sus_high * smooth_gain_c + target_sus_high * (1 - smooth_gain_c);
+
+cur_sc_mix = cur_sc_mix * smooth_gain_c + target_sc_mix * (1 - smooth_gain_c);
+
+cur_out_gain = cur_out_gain * smooth_gain_c + target_out_gain * (1 - smooth_gain_c);
+cur_mix_wet = cur_mix_wet * smooth_gain_c + target_mix_wet * (1 - smooth_gain_c);
+
+cur_xo1 = cur_xo1 * smooth_xo_c + target_xo1 * (1 - smooth_xo_c);
+cur_xo2 = cur_xo2 * smooth_xo_c + target_xo2 * (1 - smooth_xo_c);
+
+svf_upd_cnt += 1;
+svf_upd_cnt >= 128 ? (
+  svf_upd_cnt = 0;
+  // Update SVF Coefficients
+  xo1_l_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_l_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_l_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_r_lp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_lp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+  xo1_r_hp_f1.svf_set_freq(cur_xo1, Q, proc_sr); xo1_r_hp_f2.svf_set_freq(cur_xo1, Q, proc_sr);
+
+  xo2_l_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_l_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_l_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_r_lp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_lp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+  xo2_r_hp_f1.svf_set_freq(cur_xo2, Q, proc_sr); xo2_r_hp_f2.svf_set_freq(cur_xo2, Q, proc_sr);
+);
+
+// Store raw input
+in_l_raw = spl0;
+in_r_raw = spl1;
+
+// Input Metering
+in_peak_l = max(abs(in_l_raw), in_peak_l * peak_decay);
+in_peak_r = max(abs(in_r_raw), in_peak_r * peak_decay);
+
+// Delay input for Delta
+delta_buf_l[delta_ptr] = in_l_raw;
+delta_buf_r[delta_ptr] = in_r_raw;
+
+// Delta Buffer Crossfade
+delta_read_offset_fade < 1.0 ? (
+  delta_read_offset_fade += 1 / (0.020 * srate); // 20ms crossfade
+  delta_read_offset_fade >= 1.0 ? delta_read_offset_fade = 1.0;
+);
+
+delta_read_ptr = (delta_ptr - current_proc_latency + BUF_SZ) & BUF_MASK;
+delta_read_ptr_old = (delta_ptr - delta_read_offset_target + BUF_SZ) & BUF_MASK;
+
+// Read with Crossfade
+delayed_in_l = delta_buf_l[delta_read_ptr_old] * (1 - delta_read_offset_fade) + delta_buf_l[delta_read_ptr] * delta_read_offset_fade;
+delayed_in_r = delta_buf_r[delta_read_ptr_old] * (1 - delta_read_offset_fade) + delta_buf_r[delta_read_ptr] * delta_read_offset_fade;
+
+delta_ptr = (delta_ptr + 1) & BUF_MASK;
+
+// --- PROCESSING LOOP ---
+// Smart Bypass with cooldown
+abs(spl0) > 0.0000001 || abs(spl1) > 0.0000001 ? (
+  sb_timer = srate * 0.1; // Stay active for 100ms after last signal
+) : (
+  sb_timer > 0 ? sb_timer -= 1;
+);
+
+sb_timer > 0 ? (
+  use_os ? (
+  // Upsample 1x -> 2x
+  os_tmp = spl0 - os_a1 * os_L_up.s1; up_L_0 = os_a1 * os_tmp + os_L_up.s1; os_L_up.s1 = os_tmp;
+  os_tmp = spl0 - os_a2 * os_L_up.s2; up_L_1 = os_a2 * os_tmp + os_L_up.s2; os_L_up.s2 = os_tmp;
+  os_tmp = spl1 - os_a1 * os_R_up.s1; up_R_0 = os_a1 * os_tmp + os_R_up.s1; os_R_up.s1 = os_tmp;
+  os_tmp = spl1 - os_a2 * os_R_up.s2; up_R_1 = os_a2 * os_tmp + os_R_up.s2; os_R_up.s2 = os_tmp;
+  
+  os_mode >= 2 ? (
+    // 2x -> 4x (Stage 2)
+    // L
+    os_tmp = up_L_0 - os_a1 * os4_L_up_0.s1; up4_L_0 = os_a1 * os_tmp + os4_L_up_0.s1; os4_L_up_0.s1 = os_tmp;
+    os_tmp = up_L_0 - os_a2 * os4_L_up_0.s2; up4_L_1 = os_a2 * os_tmp + os4_L_up_0.s2; os4_L_up_0.s2 = os_tmp;
+    os_tmp = up_L_1 - os_a1 * os4_L_up_1.s1; up4_L_2 = os_a1 * os_tmp + os4_L_up_1.s1; os4_L_up_1.s1 = os_tmp;
+    os_tmp = up_L_1 - os_a2 * os4_L_up_1.s2; up4_L_3 = os_a2 * os_tmp + os4_L_up_1.s2; os4_L_up_1.s2 = os_tmp;
+    // R
+    os_tmp = up_R_0 - os_a1 * os4_R_up_0.s1; up4_R_0 = os_a1 * os_tmp + os4_R_up_0.s1; os4_R_up_0.s1 = os_tmp;
+    os_tmp = up_R_0 - os_a2 * os4_R_up_0.s2; up4_R_1 = os_a2 * os_tmp + os4_R_up_0.s2; os4_R_up_0.s2 = os_tmp;
+    os_tmp = up_R_1 - os_a1 * os4_R_up_1.s1; up4_R_2 = os_a1 * os_tmp + os4_R_up_1.s1; os4_R_up_1.s1 = os_tmp;
+    os_tmp = up_R_1 - os_a2 * os4_R_up_1.s2; up4_R_3 = os_a2 * os_tmp + os4_R_up_1.s2; os4_R_up_1.s2 = os_tmp;
+    
+    os_mode == 3 ? (
+        // 4x -> 8x (Stage 3)
+        // Left Channel Streams
+        // Stream 0
+        os_tmp = up4_L_0 - os_a1 * os8_L_up_0.s1; up8_L_0 = os_a1 * os_tmp + os8_L_up_0.s1; os8_L_up_0.s1 = os_tmp;
+        os_tmp = up4_L_0 - os_a2 * os8_L_up_0.s2; up8_L_1 = os_a2 * os_tmp + os8_L_up_0.s2; os8_L_up_0.s2 = os_tmp;
+        // Stream 1
+        os_tmp = up4_L_1 - os_a1 * os8_L_up_1.s1; up8_L_2 = os_a1 * os_tmp + os8_L_up_1.s1; os8_L_up_1.s1 = os_tmp;
+        os_tmp = up4_L_1 - os_a2 * os8_L_up_1.s2; up8_L_3 = os_a2 * os_tmp + os8_L_up_1.s2; os8_L_up_1.s2 = os_tmp;
+        // Stream 2
+        os_tmp = up4_L_2 - os_a1 * os8_L_up_2.s1; up8_L_4 = os_a1 * os_tmp + os8_L_up_2.s1; os8_L_up_2.s1 = os_tmp;
+        os_tmp = up4_L_2 - os_a2 * os8_L_up_2.s2; up8_L_5 = os_a2 * os_tmp + os8_L_up_2.s2; os8_L_up_2.s2 = os_tmp;
+        // Stream 3
+        os_tmp = up4_L_3 - os_a1 * os8_L_up_3.s1; up8_L_6 = os_a1 * os_tmp + os8_L_up_3.s1; os8_L_up_3.s1 = os_tmp;
+        os_tmp = up4_L_3 - os_a2 * os8_L_up_3.s2; up8_L_7 = os_a2 * os_tmp + os8_L_up_3.s2; os8_L_up_3.s2 = os_tmp;
+
+        // Right Channel Streams
+        // Stream 0
+        os_tmp = up4_R_0 - os_a1 * os8_R_up_0.s1; up8_R_0 = os_a1 * os_tmp + os8_R_up_0.s1; os8_R_up_0.s1 = os_tmp;
+        os_tmp = up4_R_0 - os_a2 * os8_R_up_0.s2; up8_R_1 = os_a2 * os_tmp + os8_R_up_0.s2; os8_R_up_0.s2 = os_tmp;
+        // Stream 1
+        os_tmp = up4_R_1 - os_a1 * os8_R_up_1.s1; up8_R_2 = os_a1 * os_tmp + os8_R_up_1.s1; os8_R_up_1.s1 = os_tmp;
+        os_tmp = up4_R_1 - os_a2 * os8_R_up_1.s2; up8_R_3 = os_a2 * os_tmp + os8_R_up_1.s2; os8_R_up_1.s2 = os_tmp;
+        // Stream 2
+        os_tmp = up4_R_2 - os_a1 * os8_R_up_2.s1; up8_R_4 = os_a1 * os_tmp + os8_R_up_2.s1; os8_R_up_2.s1 = os_tmp;
+        os_tmp = up4_R_2 - os_a2 * os8_R_up_2.s2; up8_R_5 = os_a2 * os_tmp + os8_R_up_2.s2; os8_R_up_2.s2 = os_tmp;
+        // Stream 3
+        os_tmp = up4_R_3 - os_a1 * os8_R_up_3.s1; up8_R_6 = os_a1 * os_tmp + os8_R_up_3.s1; os8_R_up_3.s1 = os_tmp;
+        os_tmp = up4_R_3 - os_a2 * os8_R_up_3.s2; up8_R_7 = os_a2 * os_tmp + os8_R_up_3.s2; os8_R_up_3.s2 = os_tmp;
+
+        // Process at 8x Rate
+        process_sample(up8_L_0, up8_R_0); p8_L_0 = out_l; p8_R_0 = out_r;
+        process_sample(up8_L_1, up8_R_1); p8_L_1 = out_l; p8_R_1 = out_r;
+        process_sample(up8_L_2, up8_R_2); p8_L_2 = out_l; p8_R_2 = out_r;
+        process_sample(up8_L_3, up8_R_3); p8_L_3 = out_l; p8_R_3 = out_r;
+        process_sample(up8_L_4, up8_R_4); p8_L_4 = out_l; p8_R_4 = out_r;
+        process_sample(up8_L_5, up8_R_5); p8_L_5 = out_l; p8_R_5 = out_r;
+        process_sample(up8_L_6, up8_R_6); p8_L_6 = out_l; p8_R_6 = out_r;
+        process_sample(up8_L_7, up8_R_7); p8_L_7 = out_l; p8_R_7 = out_r;
+
+        // Downsample 8x to 4x
+        // L
+        os_tmp = p8_L_0 - os_a2 * os8_L_down_0.s1; ds_out = os_a2 * os_tmp + os8_L_down_0.s1; os8_L_down_0.s1 = os_tmp;
+        os_tmp = p8_L_1 - os_a1 * os8_L_down_0.s2; p4_L_0 = (os_a1 * os_tmp + os8_L_down_0.s2 + ds_out) * 0.5; os8_L_down_0.s2 = os_tmp;
+        
+        os_tmp = p8_L_2 - os_a2 * os8_L_down_1.s1; ds_out = os_a2 * os_tmp + os8_L_down_1.s1; os8_L_down_1.s1 = os_tmp;
+        os_tmp = p8_L_3 - os_a1 * os8_L_down_1.s2; p4_L_1 = (os_a1 * os_tmp + os8_L_down_1.s2 + ds_out) * 0.5; os8_L_down_1.s2 = os_tmp;
+        
+        os_tmp = p8_L_4 - os_a2 * os8_L_down_2.s1; ds_out = os_a2 * os_tmp + os8_L_down_2.s1; os8_L_down_2.s1 = os_tmp;
+        os_tmp = p8_L_5 - os_a1 * os8_L_down_2.s2; p4_L_2 = (os_a1 * os_tmp + os8_L_down_2.s2 + ds_out) * 0.5; os8_L_down_2.s2 = os_tmp;
+
+        os_tmp = p8_L_6 - os_a2 * os8_L_down_3.s1; ds_out = os_a2 * os_tmp + os8_L_down_3.s1; os8_L_down_3.s1 = os_tmp;
+        os_tmp = p8_L_7 - os_a1 * os8_L_down_3.s2; p4_L_3 = (os_a1 * os_tmp + os8_L_down_3.s2 + ds_out) * 0.5; os8_L_down_3.s2 = os_tmp;
+
+        // R
+        os_tmp = p8_R_0 - os_a2 * os8_R_down_0.s1; ds_out = os_a2 * os_tmp + os8_R_down_0.s1; os8_R_down_0.s1 = os_tmp;
+        os_tmp = p8_R_1 - os_a1 * os8_R_down_0.s2; p4_R_0 = (os_a1 * os_tmp + os8_R_down_0.s2 + ds_out) * 0.5; os8_R_down_0.s2 = os_tmp;
+        
+        os_tmp = p8_R_2 - os_a2 * os8_R_down_1.s1; ds_out = os_a2 * os_tmp + os8_R_down_1.s1; os8_R_down_1.s1 = os_tmp;
+        os_tmp = p8_R_3 - os_a1 * os8_R_down_1.s2; p4_R_1 = (os_a1 * os_tmp + os8_R_down_1.s2 + ds_out) * 0.5; os8_R_down_1.s2 = os_tmp;
+        
+        os_tmp = p8_R_4 - os_a2 * os8_R_down_2.s1; ds_out = os_a2 * os_tmp + os8_R_down_2.s1; os8_R_down_2.s1 = os_tmp;
+        os_tmp = p8_R_5 - os_a1 * os8_R_down_2.s2; p4_R_2 = (os_a1 * os_tmp + os8_R_down_2.s2 + ds_out) * 0.5; os8_R_down_2.s2 = os_tmp;
+
+        os_tmp = p8_R_6 - os_a2 * os8_R_down_3.s1; ds_out = os_a2 * os_tmp + os8_R_down_3.s1; os8_R_down_3.s1 = os_tmp;
+        os_tmp = p8_R_7 - os_a1 * os8_R_down_3.s2; p4_R_3 = (os_a1 * os_tmp + os8_R_down_3.s2 + ds_out) * 0.5; os8_R_down_3.s2 = os_tmp;
+
+    ) : (
+        // 4x MODE
+        process_sample(up4_L_0, up4_R_0); p4_L_0 = out_l; p4_R_0 = out_r;
+        process_sample(up4_L_1, up4_R_1); p4_L_1 = out_l; p4_R_1 = out_r;
+        process_sample(up4_L_2, up4_R_2); p4_L_2 = out_l; p4_R_2 = out_r;
+        process_sample(up4_L_3, up4_R_3); p4_L_3 = out_l; p4_R_3 = out_r;
+    );
+    
+    // Downsample 4x to 2x
+    // L
+    os_tmp = p4_L_0 - os_a2 * os4_L_down_0.s1; ds_out = os_a2 * os_tmp + os4_L_down_0.s1; os4_L_down_0.s1 = os_tmp;
+    os_tmp = p4_L_1 - os_a1 * os4_L_down_0.s2; p2_L_0 = (os_a1 * os_tmp + os4_L_down_0.s2 + ds_out) * 0.5; os4_L_down_0.s2 = os_tmp;
+    os_tmp = p4_L_2 - os_a2 * os4_L_down_1.s1; ds_out = os_a2 * os_tmp + os4_L_down_1.s1; os4_L_down_1.s1 = os_tmp;
+    os_tmp = p4_L_3 - os_a1 * os4_L_down_1.s2; p2_L_1 = (os_a1 * os_tmp + os4_L_down_1.s2 + ds_out) * 0.5; os4_L_down_1.s2 = os_tmp;
+    // R
+    os_tmp = p4_R_0 - os_a2 * os4_R_down_0.s1; ds_out = os_a2 * os_tmp + os4_R_down_0.s1; os4_R_down_0.s1 = os_tmp;
+    os_tmp = p4_R_1 - os_a1 * os4_R_down_0.s2; p2_R_0 = (os_a1 * os_tmp + os4_R_down_0.s2 + ds_out) * 0.5; os4_R_down_0.s2 = os_tmp;
+    os_tmp = p4_R_2 - os_a2 * os4_R_down_1.s1; ds_out = os_a2 * os_tmp + os4_R_down_1.s1; os4_R_down_1.s1 = os_tmp;
+    os_tmp = p4_R_3 - os_a1 * os4_R_down_1.s2; p2_R_1 = (os_a1 * os_tmp + os4_R_down_1.s2 + ds_out) * 0.5; os4_R_down_1.s2 = os_tmp;
+  ) : (
+    // Process at 2x Rate
+    process_sample(up_L_0, up_R_0); p2_L_0 = out_l; p2_R_0 = out_r;
+    process_sample(up_L_1, up_R_1); p2_L_1 = out_l; p2_R_1 = out_r;
+  );
+  
+  // Downsample 2x to 1x
+  os_tmp = p2_L_0 - os_a2 * os_L_down.s1; ds_out = os_a2 * os_tmp + os_L_down.s1; os_L_down.s1 = os_tmp;
+  os_tmp = p2_L_1 - os_a1 * os_L_down.s2; out_l = (os_a1 * os_tmp + os_L_down.s2 + ds_out) * 0.5; os_L_down.s2 = os_tmp;
+  
+  os_tmp = p2_R_0 - os_a2 * os_R_down.s1; ds_out = os_a2 * os_tmp + os_R_down.s1; os_R_down.s1 = os_tmp;
+  os_tmp = p2_R_1 - os_a1 * os_R_down.s2; out_r = (os_a1 * os_tmp + os_R_down.s2 + ds_out) * 0.5; os_R_down.s2 = os_tmp;
+  
+) : (
+  // Process 1x
+  process_sample(spl0, spl1);
+);
+) : (
+  out_l = spl0; out_r = spl1;
+);
+
+// AUTO GAIN DYNAMICS (LUFS Momentary)
+auto_gain ? (
+  // K-Weighting Pre-Filtering
+  l_in_w = lufs_in_hs_l.bq_process(in_l_raw);
+  l_in_w = lufs_in_hp_l.svf_process(l_in_w);
+  
+  r_in_w = lufs_in_hs_r.bq_process(in_r_raw);
+  r_in_w = lufs_in_hp_r.svf_process(r_in_w);
+  
+  l_out_w = lufs_out_hs_l.bq_process(out_l);
+  l_out_w = lufs_out_hp_l.svf_process(l_out_w);
+  
+  r_out_w = lufs_out_hs_r.bq_process(out_r);
+  r_out_w = lufs_out_hp_r.svf_process(r_out_w);
+
+  // Mean Square Calculation (400ms window)
+  rms_sq_in = (sqr(l_in_w) + sqr(r_in_w)) * 0.5;
+  rms_sq_sum_in = rms_sq_sum_in * rms_smooth_coeff + rms_sq_in * (1 - rms_smooth_coeff);
+  
+  rms_sq_out = (sqr(l_out_w) + sqr(r_out_w)) * 0.5;
+  rms_sq_sum_out = rms_sq_sum_out * rms_smooth_coeff + rms_sq_out * (1 - rms_smooth_coeff);
+  
+  rms_in = sqrt(rms_sq_sum_in);
+  rms_out = sqrt(rms_sq_sum_out);
+  
+  rms_in < ag_gate && rms_out < ag_gate ? (
+    target_ratio = 1.0;
+  ) : (
+    target_ratio = rms_in / (rms_out + 0.000001);
+    target_ratio = clamp(target_ratio, 0.1, 10.0);
+  );
+  
+  ag_current_gain = ag_current_gain * ag_change_coeff + target_ratio * (1 - ag_change_coeff);
+  
+  out_l *= ag_current_gain;
+  out_r *= ag_current_gain;
+);
+
+limiter_on ? (
+  // Lookahead Limiter
+  lim_buf_l[lim_buf_ptr] = out_l;
+  lim_buf_r[lim_buf_ptr] = out_r;
+  
+  // Calculate gain
+  peak_val = max(abs(out_l), abs(out_r));
+  peak_val > limit_lin ? ( target_lim = limit_lin / peak_val; ) : ( target_lim = 1.0; );
+  
+  // Gain Smoothing
+  target_lim < limiter_gain ? (
+    limiter_gain = limiter_gain * lim_att + target_lim * (1 - lim_att);
+  ) : (
+    limiter_gain = limiter_gain * lim_rel + target_lim * (1 - lim_rel);
+  );
+  
+  // Apply Limiter (Delayed)
+  read_ptr = (lim_buf_ptr - lim_buf_len + BUF_SZ) & BUF_MASK; 
+  
+  // Apply Fade
+  out_l = lim_buf_l[read_ptr] * limiter_gain * limiter_reset_fade;
+  out_r = lim_buf_r[read_ptr] * limiter_gain * limiter_reset_fade;
+
+  limiter_reset_fade < 1.0 ? (
+    limiter_reset_fade += 1 / (0.010 * srate); // 10ms fade-in
+    limiter_reset_fade >= 1.0 ? limiter_reset_fade = 1.0;
+  );
+  
+  lim_buf_ptr = (lim_buf_ptr + 1) & BUF_MASK;
+);
+
+abs_out_l = abs(out_l);
+abs_out_r = abs(out_r);
+out_peak_l = max(abs_out_l, out_peak_l * peak_decay);
+out_peak_r = max(abs_out_r, out_peak_r * peak_decay);
+abs_out_l > 1 || abs_out_r > 1 ? (
+  clip_counter = clip_hold_samples;
+) : (
+  clip_counter > 0 ? clip_counter -= 1;
+);
+
+// Output Alignment
+out_l_aligned = out_l;
+out_r_aligned = out_r;
+
+// Delta Mode (Aligned)
+delta_mode ? (
+  out_l_aligned = out_l_aligned - delayed_in_l;
+  out_r_aligned = out_r_aligned - delayed_in_r;
+);
+
+// Apply Fade-Switch (Mask buffer jumps)
+spl0 = out_l_aligned * switch_fade;
+spl1 = out_r_aligned * switch_fade;
+
+gfx_wave_buf[gfx_wave_ptr] = (in_l_raw + in_r_raw) * 0.5;
+gfx_out_buf[gfx_wave_ptr] = (spl0 + spl1) * 0.5;
+gfx_wave_ptr = (gfx_wave_ptr + 1) % gfx_wave_size;
+
+  // Update GR History (Synced to Project Sample Rate)
+  gr_hist_buf[gr_hist_ptr] = (ts_low_l.current_gr + ts_low_r.current_gr + ts_mid_l.current_gr + ts_mid_r.current_gr + ts_high_l.current_gr + ts_high_r.current_gr) / 6;
+  gr_hist_ptr = (gr_hist_ptr + 1) % 2048;
+
+// Graphics Interface
+@gfx 900 500
+
+// Layout Constants
+gfx_clear = 0; 
+set_col_bg();
+gfx_rect(0,0,calc_w,gfx_h);
+
+// Responsive Layout
+pad_x = 10;
+pad_y = 5;
+header_h = 40;
+
+// Minimum dimensions
+gfx_w < 600 ? (
+  gfx_w = 600;
+);
+calc_w = max(600, gfx_w);
+calc_h = max(450, gfx_h); // Virtual height
+
+// UI Scaling
+base_w = 900;
+base_h = 500; // Reference height
+
+// Proportional Scaling
+scale_w = calc_w / base_w;
+scale_h = calc_h / base_h;
+ui_scale = min(scale_w, scale_h);
+
+// Safety limits
+ui_scale = max(0.6, ui_scale);
+
+knob_r = 30 * ui_scale;
+
+// Layout Container
+layout_w = calc_w; 
+layout_off_x = 0;
+
+// Center Layout
+scale_w > scale_h ? (
+  layout_w = base_w * ui_scale;
+  layout_off_x = (calc_w - layout_w) / 2;
+);
+
+// Waveform Area
+wave_h_pct = 0.30; // 30% of screen height
+wave_h = floor(calc_h * wave_h_pct);
+wave_h = max(80, min(300, wave_h)); // Height limits
+wave_y = header_h + pad_y + 24; // Button spacing
+wave_w = calc_w - (pad_x * 2);
+wave_x = pad_x;
+
+// Panel Area
+panel_y = wave_y + wave_h + pad_y;
+panel_h = calc_h - panel_y - pad_y;
+col_w = (layout_w - (pad_x * 2)) / 3;
+// Knob spacing
+knob_sp = (col_w / 2) - knob_r - (40 * ui_scale);
+meter_off = knob_sp + knob_r + (28 * ui_scale);
+
+// Header
+  set_col_panel(); gfx_rect(0,0,calc_w, header_h);
+  set_col_txt(); gfx_setfont(1, "Arial, Helvetica, sans-serif", 20, 'b');
+  gfx_x=15; gfx_y= (header_h - 24) / 2; // Center title
+  gfx_drawstr("Floop Multiband Transient Shaper");
+  
+  // Header Buttons
+  hide_btn_h = 24 * ui_scale;
+  hide_btn_w = 100 * ui_scale;
+  hide_btn_y = (header_h - hide_btn_h) / 2;
+  hide_btn_x = calc_w - 480 * ui_scale; // Button spacing
+  
+  // [C] Button
+  c_btn_s = 24 * ui_scale;
+  c_btn_x = calc_w - 35;
+  c_btn_y = (header_h - c_btn_s) / 2;
+
+// Sync frequencies
+  xo1_freq = slider(1);
+  xo2_freq = slider(2);
+  
+// Input Handling
+// Mouse Delta
+mouse_cap & 1 ? (
+  !last_mouse_cap ? (
+    // Click start
+    mouse_start_x = mouse_x;
+    mouse_start_y = mouse_y;
+  );
+  mouse_dy = last_mouse_y - mouse_y;
+) : (
+  mouse_dy = 0;
+  drag_knob_id = 0;
+  drag_handle = 0;
+);
+
+
+
+
+// Waveform Zoom
+mouse_x >= wave_x && mouse_x < wave_x + wave_w && mouse_y >= wave_y && mouse_y < wave_y + wave_h ? (
+  mouse_wheel != 0 ? (
+    user_zoomed = 1; // Manual zoom
+    view_seconds = view_seconds * (mouse_wheel > 0 ? 0.9 : 1.1);
+    max_view_seconds = gfx_wave_size / srate;
+    view_seconds = max(0.01, min(view_seconds, max_view_seconds));
+    mouse_wheel = 0;
+  );
+);
+
+// Crossover Handles
+min_log = log(20); max_log = log(20000); scale_log = wave_w / (max_log - min_log);
+
+xo1_x = freq_to_x(xo1_freq);
+xo2_x = freq_to_x(xo2_freq);
+
+// Cursor Feedback
+!drag_knob_id ? (
+  drag_handle || ((abs(mouse_x - xo1_x) < 15 || abs(mouse_x - xo2_x) < 15) && mouse_y > wave_y && mouse_y < wave_y + wave_h) ? (
+    gfx_setcursor(32515, "custom"); // Size WE
+  ) : (
+    gfx_setcursor(0, ""); // Default arrow
+  );
+);
+
+mouse_cap & 1 ? (
+  !drag_handle && !drag_knob_id ? (
+     // Hit Testing
+     abs(mouse_x - xo1_x) < 15 && mouse_y > wave_y && mouse_y < wave_y + wave_h ? drag_handle = 1;
+     abs(mouse_x - xo2_x) < 15 && mouse_y > wave_y && mouse_y < wave_y + wave_h ? drag_handle = 2;
+  );
+  drag_handle == 1 ? (
+    new_f = x_to_freq(mouse_x);
+    new_f = min(xo2_freq - 100, max(60, new_f));
+    new_f = floor(new_f + 0.5); // Round to integer
+    slider(1) = new_f;
+    slider_automate(slider(1));
+    update_dsp(); 
+  );
+  drag_handle == 2 ? (
+    new_f = x_to_freq(mouse_x);
+    new_f = min(10000, max(xo1_freq + 100, new_f));
+    new_f = floor(new_f + 0.5); // Round to integer
+    slider(2) = new_f;
+    slider_automate(slider(2));
+    update_dsp(); 
+  );
+);
+
+// 3. DRAWING & HELPERS
+// --------------------
+
+// Config Button
+c_btn_x = calc_w - pad_x - c_btn_s;
+Button(c_btn_x, c_btn_y, c_btn_s, c_btn_s, "C", sliders_showing) ? (
+  sliders_showing = slider_show(UI_SLIDER_MASK, -1) > 0;
+);
+
+// Toolbar Buttons
+btn_gap = 8 * ui_scale;
+
+// Delta Mode Button
+delta_btn_x = c_btn_x - btn_gap - hide_btn_w;
+Button(delta_btn_x, hide_btn_y, hide_btn_w, hide_btn_h, delta_mode ? "Delta: On" : "Delta: Off", delta_mode) ? (
+  slider(48) = abs(slider(48) - 1);
+  slider_automate(slider(48));
+  update_dsp();
+);
+
+// Detector HP Button
+sc_hp_btn_x = delta_btn_x - btn_gap - hide_btn_w;
+Button(sc_hp_btn_x, hide_btn_y, hide_btn_w, hide_btn_h, sc_hp_on ? "Det. HP: On" : "Det. HP: Off", sc_hp_on) ? (
+  slider(47) = abs(slider(47) - 1);
+  sc_hp_on = slider(47);
+  slider_automate(sc_hp_on);
+  update_dsp();
+);
+
+// Hide Output Button
+hide_btn_x = sc_hp_btn_x - btn_gap - hide_btn_w;
+Button(hide_btn_x, hide_btn_y, hide_btn_w, hide_btn_h, show_output_wave ? "Hide Output" : "Show Output", show_output_wave) ? (
+  show_output_wave = show_output_wave ? 0 : 1;
+);
+
+  // Waveform Background
+set_col_bg();
+gfx_rect(wave_x, wave_y, wave_w, wave_h);
+gfx_r=0.2; gfx_g=0.2; gfx_b=0.2; gfx_rect(wave_x, wave_y, wave_w, wave_h, 0);
+
+// Draw Waveform
+gfx_a = 0.8; gfx_r=0.5; gfx_g=0.5; gfx_b=0.5; // Higher opacity
+wave_mid_y = wave_y + wave_h/2;
+wave_scale_y = wave_h / 2;
+
+srate > 0 ? (
+  max_view_seconds = gfx_wave_size / srate;
+  
+  // Auto-Zoom Calculation
+  !user_zoomed && tempo > 0 ? (
+     view_seconds = (240 / tempo) * 4;
+  );
+
+  !view_seconds ? view_seconds = 5; // Default fallback
+  view_seconds = max(0.01, min(view_seconds, max_view_seconds));
+  samples_to_view = srate * view_seconds;
+  samples_per_pixel = samples_to_view / wave_w;
+
+  read_ptr_start = gfx_wave_ptr - samples_to_view;
+  while (read_ptr_start < 0) ( read_ptr_start += gfx_wave_size; );
+
+  i = 0;
+  while (i < wave_w) (
+    idx_start_offset = floor(i * samples_per_pixel);
+    idx_end_offset = floor((i + 1) * samples_per_pixel);
+    
+    min_v = 100; max_v = -100;
+    
+    // Find min/max in the time slice
+    j = idx_start_offset;
+    loop_count = idx_end_offset - idx_start_offset;
+    // Loop Optimization
+    loop_count > 200 ? (
+      step_size = loop_count / 200;
+      loop_count = 200;
+    ) : (
+      step_size = 1;
+    );
+    
+    k = 0;
+    read_idx = 0;
+    loop(loop_count, 
+      buf_idx = (read_ptr_start + j + floor(read_idx)) % gfx_wave_size;
+      val = gfx_wave_buf[buf_idx];
+      val < min_v ? min_v = val;
+      val > max_v ? max_v = val;
+      read_idx += step_size;
+    );
+    
+    min_v == 100 ? min_v = 0;
+    max_v == -100 ? max_v = 0;
+    
+    min_v = max(-1, min(1, min_v));
+    max_v = max(-1, min(1, max_v));
+    
+    y1 = wave_mid_y - (max_v * wave_scale_y);
+    y2 = wave_mid_y - (min_v * wave_scale_y);
+    
+    // Ensure at least 1 pixel height
+    abs(y1 - y2) < 1 ? y2 = y1 + 1;
+
+    gfx_line(wave_x + i, y1, wave_x + i, y2);
+    
+    i += 1;
+  );
+  
+  show_output_wave ? (
+    gfx_a = 0.9; gfx_r=0.2; gfx_g=0.9; gfx_b=1.0;
+    
+    last_y = -1000;
+    i = 0;
+    while (i < wave_w) (
+      idx_start_offset = floor(i * samples_per_pixel);
+      idx_end_offset = floor((i + 1) * samples_per_pixel);
+      
+      max_v = -100;
+      
+      j = idx_start_offset;
+      loop_count = idx_end_offset - idx_start_offset;
+      loop_count > 200 ? (
+        step_size = loop_count / 200;
+        loop_count = 200;
+      ) : (
+        step_size = 1;
+      );
+      
+      k = 0;
+      read_idx = 0;
+      loop(loop_count, 
+        buf_idx = (read_ptr_start + j + floor(read_idx)) % gfx_wave_size;
+        val = gfx_out_buf[buf_idx];
+        val > max_v ? max_v = val;
+        read_idx += step_size;
+      );
+      
+      max_v == -100 ? max_v = 0;
+      max_v = max(-1, min(1, max_v));
+      
+      y_curr = wave_mid_y - (max_v * wave_scale_y);
+      
+      i > 0 && last_y != -1000 ? (
+         gfx_line(wave_x + i - 1, last_y, wave_x + i, y_curr);
+         gfx_line(wave_x + i - 1, last_y + 1, wave_x + i, y_curr + 1);
+         gfx_line(wave_x + i - 1, last_y - 1, wave_x + i, y_curr - 1);
+      );
+      
+      last_y = y_curr;
+      i += 1;
+    );
+  );
+);
+
+// Draw Grid
+function draw_grid_line(freq, label) local(x) (
+  x = freq_to_x(freq);
+  x >= wave_x && x < wave_x + wave_w ? (
+    // Line
+    gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=0.1;
+    gfx_line(x, wave_y, x, wave_y + wave_h);
+    
+    // Label
+    label >= 0 ? (
+      gfx_setfont(1, "Arial, Helvetica, sans-serif", 10);
+      gfx_measurestr(label, str_w, str_h);
+      
+      // Background for label
+      gfx_r=0.1; gfx_g=0.1; gfx_b=0.1; gfx_a=0.7;
+      gfx_rect(x + 1, wave_y + 1, str_w + 2, str_h + 2);
+
+      gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=0.7; // Brighter
+      gfx_x = x + 2; gfx_y = wave_y + 2;
+      gfx_drawstr(label);
+    );
+  );
+);
+
+draw_grid_line(20, "20");
+draw_grid_line(50, "50");
+draw_grid_line(100, "100");
+draw_grid_line(200, "200");
+draw_grid_line(500, "500");
+draw_grid_line(1000, "1k");
+draw_grid_line(2000, "2k");
+draw_grid_line(5000, "5k");
+draw_grid_line(10000, "10k");
+draw_grid_line(20000, "20k");
+
+// Draw Crossover Lines
+xo1_x = freq_to_x(xo1_freq);
+xo2_x = freq_to_x(xo2_freq);
+
+// Draw Band Buttons
+function draw_band_controls(x_start, x_end, idx_solo, idx_mute, idx_bypass, is_solo, is_mute, is_bypass) 
+local(cx, cy, btn_s, btn_space, bx_s, bx_m, bx_b, total_w, new_val)
+(
+  cx = x_start + (x_end - x_start) / 2;
+  cy = wave_y + (20 * ui_scale); // Top of the band
+  
+  btn_s = 24 * ui_scale; 
+  btn_space = 6 * ui_scale;
+  
+  // Calculate total width
+   total_w = (btn_s * 3) + (btn_space * 2);
+ 
+   // Center Alignment
+   bx_s = cx - (total_w / 2);
+   
+   // Prevent overflow
+   bx_s + total_w > x_end ? (
+     bx_s = x_end - total_w - (2 * ui_scale);
+  );
+  
+  bx_m = bx_s + btn_s + btn_space;
+  bx_b = bx_m + btn_s + btn_space;
+
+  // Solo Button (Left)
+  clicked_s = Button(bx_s, cy, btn_s, btn_s, "S", is_solo);
+  clicked_s ? (
+    new_val = abs(slider(idx_solo) - 1);
+    slider(idx_solo) = new_val;
+    slider_automate(slider(idx_solo));
+    
+    new_val ? (
+       slider(idx_mute) ? ( slider(idx_mute) = 0; slider_automate(slider(idx_mute)); );
+       slider(idx_bypass) ? ( slider(idx_bypass) = 0; slider_automate(slider(idx_bypass)); );
+    );
+    update_dsp();
+  );
+  
+  // Mute Button (Center)
+  clicked_m = Button(bx_m, cy, btn_s, btn_s, "M", is_mute);
+  clicked_m ? (
+    new_val = abs(slider(idx_mute) - 1);
+    slider(idx_mute) = new_val;
+    slider_automate(slider(idx_mute));
+    
+    new_val ? (
+       slider(idx_solo) ? ( slider(idx_solo) = 0; slider_automate(slider(idx_solo)); );
+       slider(idx_bypass) ? ( slider(idx_bypass) = 0; slider_automate(slider(idx_bypass)); );
+    );
+    update_dsp();
+  );
+
+  // Bypass Button (Right)
+  clicked_b = Button(bx_b, cy, btn_s, btn_s, "B", is_bypass);
+  clicked_b ? (
+    new_val = abs(slider(idx_bypass) - 1);
+    slider(idx_bypass) = new_val;
+    slider_automate(slider(idx_bypass));
+    
+    new_val ? (
+       slider(idx_solo) ? ( slider(idx_solo) = 0; slider_automate(slider(idx_solo)); );
+       slider(idx_mute) ? ( slider(idx_mute) = 0; slider_automate(slider(idx_mute)); );
+    );
+    update_dsp();
+  );
+);
+
+// Low Band Area
+set_col_low();
+gfx_rect(wave_x, wave_y, xo1_x - wave_x, wave_h);
+draw_band_controls(wave_x, xo1_x, 9, 8, 10, solo_low, mute_low, bypass_low);
+
+// Mid Band Area
+set_col_mid();
+gfx_rect(xo1_x, wave_y, xo2_x - xo1_x, wave_h);
+draw_band_controls(xo1_x, xo2_x, 19, 18, 20, solo_mid, mute_mid, bypass_mid);
+
+// High Band Area
+set_col_high();
+gfx_rect(xo2_x, wave_y, wave_x + wave_w - xo2_x, wave_h);
+draw_band_controls(xo2_x, wave_x + wave_w, 29, 28, 30, solo_high, mute_high, bypass_high);
+
+// Handles
+set_col_handle();
+// Hover Effect
+abs(mouse_x - xo1_x) < 15 ? ( gfx_a=0.4; gfx_rect(xo1_x - 3, wave_y, 6, wave_h); );
+abs(mouse_x - xo2_x) < 15 ? ( gfx_a=0.4; gfx_rect(xo2_x - 3, wave_y, 6, wave_h); );
+
+gfx_a=0.8;
+gfx_rect(xo1_x - 1, wave_y, 2, wave_h);
+gfx_rect(xo2_x - 1, wave_y, 2, wave_h);
+
+// Draw Controls (Knobs - Scaled)
+// Vertical offset for knobs to clear the waveform area
+knob_y_off = knob_r + (20 * ui_scale); 
+
+// LOW PANEL
+cx = layout_off_x + pad_x + col_w/2; 
+draw_knob(drive_low, -12, 12, 0.1, cx - knob_sp, panel_y + knob_y_off, knob_r, "Gain", 5, 0);
+draw_knob(att_low, -100, 100, 1, cx, panel_y + knob_y_off, knob_r, "Att", 6, 0);
+draw_knob(sus_low, -100, 100, 1, cx + knob_sp, panel_y + knob_y_off, knob_r, "Sus", 7, 0);
+
+draw_meter(ts_low_l.current_gr, ts_low_r.current_gr, cx + meter_off, panel_y + 20 * ui_scale, 40 * ui_scale);
+
+
+
+// MID PANEL
+cx = layout_off_x + pad_x + col_w + col_w/2; 
+draw_knob(drive_mid, -12, 12, 0.1, cx - knob_sp, panel_y + knob_y_off, knob_r, "Gain", 15, 0);
+draw_knob(att_mid, -100, 100, 1, cx, panel_y + knob_y_off, knob_r, "Att", 16, 0);
+draw_knob(sus_mid, -100, 100, 1, cx + knob_sp, panel_y + knob_y_off, knob_r, "Sus", 17, 0);
+
+draw_meter(ts_mid_l.current_gr, ts_mid_r.current_gr, cx + meter_off, panel_y + 20 * ui_scale, 40 * ui_scale);
+
+// HIGH PANEL
+cx = layout_off_x + pad_x + col_w*2 + col_w/2; 
+draw_knob(drive_high, -12, 12, 0.1, cx - knob_sp, panel_y + knob_y_off, knob_r, "Gain", 25, 0);
+draw_knob(att_high, -100, 100, 1, cx, panel_y + knob_y_off, knob_r, "Att", 26, 0);
+draw_knob(sus_high, -100, 100, 1, cx + knob_sp, panel_y + knob_y_off, knob_r, "Sus", 27, 0);
+
+draw_meter(ts_high_l.current_gr, ts_high_r.current_gr, cx + meter_off, panel_y + 20 * ui_scale, 40 * ui_scale);
+
+// Bottom Control Strip
+
+// Bottom Strip Positioning
+// Adjust starting position based on knob positions
+knob_section_end = panel_y + knob_y_off + knob_r + (45 * ui_scale); 
+sep_y = knob_section_end + (10 * ui_scale);
+
+bottom_h = 90 * ui_scale;
+
+// Draw Separator
+gfx_r=0.5; gfx_g=0.5; gfx_b=0.5; gfx_a=0.5;
+gfx_line(pad_x, sep_y, calc_w - pad_x, sep_y);
+
+bs_y_center = sep_y + (bottom_h / 2) - 5; 
+bs_btn_h = 28 * ui_scale; 
+bs_btn_y = bs_y_center + knob_r - bs_btn_h;
+
+w_link = knob_r * 2;
+w_slope = 80 * ui_scale;
+w_xo_mode = 100 * ui_scale;
+w_clip = 80 * ui_scale;
+w_lim = 80 * ui_scale;
+w_ag = 80 * ui_scale;
+w_meter = 10 * ui_scale;
+w_os = 80 * ui_scale;
+w_knob = 60 * ui_scale; 
+w_out_meter = 14 * ui_scale;
+
+// Calculate Total Width of Elements (AG Group treated as one unit)
+w_ag_group = w_ag + 2 + w_meter;
+w_knob_actual = knob_r * 2; // Use actual knob width
+total_elements_w = w_link + w_slope + w_xo_mode + w_clip + w_lim + w_ag_group + w_os + w_knob_actual + w_knob_actual + w_out_meter + w_out_meter;
+
+// Available Width
+avail_w = layout_w - (pad_x * 2);
+num_gaps = 10; // 11 elements -> 10 gaps
+
+// Dynamic Gap Calculation
+gap = (avail_w - total_elements_w) / num_gaps;
+gap = max(5 * ui_scale, gap); // Minimum gap safety
+
+// Start Position
+curr_x = layout_off_x + pad_x;
+total_content_w = total_elements_w + (gap * num_gaps);
+// Center if content is smaller than available width
+total_content_w < avail_w ? (
+  curr_x = layout_off_x + pad_x + (avail_w - total_content_w) / 2;
+);
+
+// 0. Stereo Link Knob
+draw_knob(slider(49), 0, 100, 1, curr_x + knob_r, bs_y_center, knob_r, "Link Ch", 49, 100);
+curr_x += w_link + gap;
+
+// 1. Slope Button
+clicked_sl = Button(curr_x, bs_btn_y, w_slope, bs_btn_h, slope_mode == 1 ? "24dB" : "12dB", slope_mode);
+clicked_sl ? (
+  slider(45) = abs(slider(45) - 1);
+  slider_automate(slider(45));
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("Slope", str_w, str_h);
+gfx_x = curr_x + (w_slope - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("Slope");
+curr_x += w_slope + gap;
+
+// 1.5 XO Mode Button
+clicked_xo = Button(curr_x, bs_btn_y, w_xo_mode, bs_btn_h, xo_mode == 0 ? "Analog LR" : "Transparent", xo_mode);
+clicked_xo ? (
+  slider(50) = abs(slider(50) - 1);
+  slider_automate(slider(50));
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("XO Mode", str_w, str_h);
+gfx_x = curr_x + (w_xo_mode - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("XO Mode");
+curr_x += w_xo_mode + gap;
+
+// 2. Soft Clip
+clicked_sc = Button(curr_x, bs_btn_y, w_clip, bs_btn_h, soft_clip ? "Clip: On" : "Clip: Off", soft_clip);
+clicked_sc ? (
+  slider(42) = abs(slider(42) - 1);
+  soft_clip = slider(42);
+  slider_automate(soft_clip);
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("Soft Clip", str_w, str_h);
+gfx_x = curr_x + (w_clip - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("Soft Clip");
+curr_x += w_clip + gap;
+
+clicked_lim = Button(curr_x, bs_btn_y, w_lim, bs_btn_h, limiter_on ? "Lim: On" : "Lim: Off", limiter_on);
+clicked_lim ? (
+  slider(46) = abs(slider(46) - 1);
+  slider_automate(slider(46));
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("Limiter", str_w, str_h);
+gfx_x = curr_x + (w_lim - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("Limiter");
+curr_x += w_lim + gap;
+
+clicked_ag = Button(curr_x, bs_btn_y, w_ag, bs_btn_h, auto_gain ? "A.Gain" : "Manual", auto_gain);
+clicked_ag ? (
+  slider(44) = abs(slider(44) - 1);
+  auto_gain = slider(44);
+  slider_automate(auto_gain);
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("Auto Gain", str_w, str_h);
+gfx_x = curr_x + (w_ag - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("Auto Gain");
+
+// Auto Gain Meter
+ag_x = curr_x + w_ag + 2;
+ag_y = bs_btn_y;
+gfx_r=0.2; gfx_g=0.2; gfx_b=0.2; gfx_rect(ag_x, ag_y, w_meter, bs_btn_h); // BG
+
+auto_gain ? (
+  // ag_current_gain is linear. < 1 means reduction.
+  ag_db = 20 * log10(ag_current_gain);
+  ag_bar_h = min(bs_btn_h, abs(ag_db) * 2); 
+  
+  ag_db < 0 ? ( gfx_r=0.9; gfx_g=0.3; gfx_b=0.3; ) : ( gfx_r=0.3; gfx_g=0.8; gfx_b=0.3; );
+  gfx_rect(ag_x, ag_y + bs_btn_h - ag_bar_h, w_meter, ag_bar_h);
+);
+curr_x += w_ag + 2 + w_meter + gap;
+
+os_str = use_os ? (os_mode == 1 ? "OS: 2x" : (os_mode == 2 ? "OS: 4x" : "OS: 8x")) : "OS: Off";
+clicked = Button(curr_x, bs_btn_y, w_os, bs_btn_h, os_str, use_os);
+clicked ? (
+  slider(43) = (slider(43) + 1) % 4;
+  slider_automate(slider(43));
+  update_dsp();
+);
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("Oversampling", str_w, str_h);
+gfx_x = curr_x + (w_os - str_w) / 2;
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("Oversampling");
+curr_x += w_os + gap;
+
+draw_knob(dry_wet, 0, 100, 1, curr_x + knob_r, bs_y_center, knob_r, "Mix", 41, 100);
+curr_x += (knob_r * 2) + gap;
+
+draw_knob(out_gain, -24, 24, 0.1, curr_x + knob_r, bs_y_center, knob_r, "Out", 40, 0);
+curr_x += (knob_r * 2) + gap;
+
+// Clip Indicator & Output Meters
+clip_h = 6 * ui_scale;
+clip_y = bs_y_center - knob_r;
+
+meter_y = clip_y + clip_h + 2;
+meter_h = (knob_r * 2) - clip_h - 2;
+
+// Draw Input Meters
+draw_peak_meter(in_peak_l, in_peak_r, curr_x, meter_y, w_out_meter, meter_h, 0);
+
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("IN", str_w, str_h);
+gfx_x = curr_x - (str_w / 2) + (w_out_meter / 2);
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("IN");
+curr_x += w_out_meter + gap;
+
+// Draw Output Meters
+clip_counter > 0 ? ( gfx_r=1.0; gfx_g=0.2; gfx_b=0.2; ) : ( gfx_r=0.25; gfx_g=0.25; gfx_b=0.25; );
+gfx_rect(curr_x, clip_y, w_out_meter, clip_h, 1);
+gfx_r=0.4; gfx_g=0.4; gfx_b=0.4; gfx_a=1; // Outline
+gfx_rect(curr_x, clip_y, w_out_meter, clip_h, 0);
+
+draw_peak_meter(out_peak_l, out_peak_r, curr_x, meter_y, w_out_meter, meter_h, 1);
+
+set_col_txt();
+gfx_setfont(1, "Arial, Helvetica, sans-serif", 16);
+gfx_measurestr("OUT", str_w, str_h);
+gfx_x = curr_x - (str_w / 2) + (w_out_meter / 2);
+gfx_y = bs_y_center + knob_r + 5;
+gfx_drawstr("OUT");
+
+// Output dB Label
+max_peak = max(out_peak_l, out_peak_r);
+max_db = lin2db(max_peak);
+max_db < -90 ? max_db = -90;
+sprintf(#val_str, "%.1f", max_db);
+gfx_measurestr(#val_str, str_w, str_h);
+gfx_x = curr_x - (str_w / 2) + (w_out_meter / 2);
+gfx_y = bs_y_center + knob_r + 5 + 14; 
+gfx_r=0.6; gfx_g=0.6; gfx_b=0.6;
+gfx_drawstr(#val_str);
+
+last_mouse_cap = mouse_cap & 1;
+last_mouse_y = mouse_y;

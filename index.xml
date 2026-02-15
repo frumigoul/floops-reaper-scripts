@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="5a25846b48cb21764d45ef7b54e2c9d187bfb195">
+<index version="1" name="Floop's Reaper Scripts" commit="f67a8728ff9c95e0d4832b158a268a6ff6915c51">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -182,11 +182,6 @@ Animated floating UI with debounced search.]]></changelog>
       </metadata>
       <version name="1.1" author="Floop-s" time="2026-01-12T06:47:17Z">
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-studio-trainer/floop-studio-trainer.lua</source>
-      </version>
-      <version name="1.2" author="Floop-s" time="2026-02-05T17:36:00Z">
-        <changelog><![CDATA[v1.2 (2026-02-05)
-- Fix: Solved crash with fractional Project BPM values.]]></changelog>
-        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/5a25846b48cb21764d45ef7b54e2c9d187bfb195/scripts/floop-studio-trainer/floop-studio-trainer.lua</source>
       </version>
     </reapack>
   </category>
