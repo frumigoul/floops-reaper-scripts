@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="f67a8728ff9c95e0d4832b158a268a6ff6915c51">
+<index version="1" name="Floop's Reaper Scripts" commit="6d24fe5693b76b464825519c0199eba48585c8da">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -42,6 +42,23 @@
       <version name="1.1.0" author="Floop-s" time="2026-02-01T11:25:30Z">
         <changelog><![CDATA[Optimized MPC Layout, Smart Scaling, UI Cleanup]]></changelog>
         <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/f67a8728ff9c95e0d4832b158a268a6ff6915c51/effects/floop-master-control/floop-master-control.jsfx</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="effects/floop-multiband-transient-shaper">
+    <reapack name="floop-multiband-transient-shaper.jsfx" type="effect" desc="Floop Multiband Transient Shaper">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 3-Band Transient Shaper with Transparent Crossovers and up to 8x Oversampling. Features per-band Attack/Sustain, LUFS Auto-Gain, Lookahead Limiter, and Delta Monitoring.\par}
+}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Floop-s" time="2026-02-15T17:18:44Z">
+        <changelog><![CDATA[- Initial Release v1.0.0]]></changelog>
+        <source type="effect">https://github.com/floop-s/floops-reaper-scripts/raw/6d24fe5693b76b464825519c0199eba48585c8da/effects/floop-multiband-transient-shaper/floop-multiband-transient-shaper.jsfx</source>
       </version>
     </reapack>
   </category>
@@ -92,6 +109,12 @@
 - "Analyze and Apply" now correctly handles item offsets and playrates.
 - "Close" button in title bar now matches standard close behavior.]]></changelog>
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-ess-hunter/floop-ess-hunter.lua</source>
+      </version>
+      <version name="1.1.1" author="Floop-s" time="2026-02-15T17:18:44Z">
+        <changelog><![CDATA[- Improved envelope visibility and stability when applying from preview.
+- Added segment gain handles with live update when Live Edit is enabled.
+- Hardened analysis and preview via median clamp on extreme sibilant material.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/6d24fe5693b76b464825519c0199eba48585c8da/scripts/floop-ess-hunter/floop-ess-hunter.lua</source>
       </version>
     </reapack>
   </category>
@@ -182,6 +205,11 @@ Animated floating UI with debounced search.]]></changelog>
       </metadata>
       <version name="1.1" author="Floop-s" time="2026-01-12T06:47:17Z">
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-studio-trainer/floop-studio-trainer.lua</source>
+      </version>
+      <version name="1.2" author="Floop-s" time="2026-02-05T17:36:00Z">
+        <changelog><![CDATA[v1.2 (2026-02-05)
+- Fix: Solved crash with fractional Project BPM values.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/5a25846b48cb21764d45ef7b54e2c9d187bfb195/scripts/floop-studio-trainer/floop-studio-trainer.lua</source>
       </version>
     </reapack>
   </category>
