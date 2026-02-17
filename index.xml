@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="6d24fe5693b76b464825519c0199eba48585c8da">
+<index version="1" name="Floop's Reaper Scripts" commit="f654ec84ac03c749df31b808f616876351c577a4">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -143,6 +143,13 @@
 + Internal: Improved project path detection.]]></changelog>
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-scratchpad/floop-scratchpad.lua</source>
         <source main="main" file="floop-startup-refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/f0453fa17b73b4a3025b7ceb5ec4e976b1ff43bb/scripts/floop-scratchpad/floop-startup-refresh.lua</source>
+      </version>
+      <version name="1.2.4" author="Floop-s" time="2026-02-17T18:42:57Z">
+        <changelog><![CDATA[+ Added: Numeric JSFX font size input next to the Font Scale slider (14–40 px).
++ Improved: Increased JSFX font size range and clamping for large projects and high-DPI layouts.
++ Fixed: JSFX reader now updates immediately when confirming font size changes from numeric input.]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/f654ec84ac03c749df31b808f616876351c577a4/scripts/floop-scratchpad/floop-scratchpad.lua</source>
+        <source main="main" file="floop-startup-refresh.lua">https://github.com/floop-s/floops-reaper-scripts/raw/f654ec84ac03c749df31b808f616876351c577a4/scripts/floop-scratchpad/floop-startup-refresh.lua</source>
       </version>
     </reapack>
   </category>
