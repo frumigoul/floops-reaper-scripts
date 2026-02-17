@@ -108,6 +108,11 @@ The easiest way to install and keep the script updated is via **ReaPack**.
 
 ## Changelog
 
+### v1.2.4 (2026-02-17)
+*   **Added**: Numeric JSFX font size input next to the Font Scale slider (14–40 px).
+*   **Improved**: Increased JSFX font size range and clamping for large sessions and high-DPI layouts.
+*   **Fixed**: JSFX Note Reader now updates immediately when confirming font size changes from the numeric input.
+
 ### v1.2.3 (2026-01-08)
 *   **Fixed**: Critical issue where notes were lost when saving a previously unsaved project (implemented proactive in-memory migration).
 *   **Fixed**: JSFX reader disappearing when adjusting font scale on tracks with empty notes.

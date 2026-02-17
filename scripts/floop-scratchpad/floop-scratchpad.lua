@@ -1,14 +1,12 @@
 -- Floop Scratchpad - Per-track notes system for REAPER.
 -- @description Floop Scratchpad: per-track notes system
--- @version 1.2.3
+-- @version 1.2.4
 -- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
---   + Fixed: Notes lost when saving a previously unsaved project.
---   + Fixed: JSFX reader disappearing on font scale changes.
---   + Fixed: Race condition when switching project tabs.
---   + Improved: Numeric display for Font Scale slider.
---   + Internal: Improved project path detection.
+--   + Added: Numeric JSFX font size input next to the Font Scale slider (14–40 px).
+--   + Improved: Increased JSFX font size range and clamping for large projects and high-DPI layouts.
+--   + Fixed: JSFX reader now updates immediately when confirming font size changes from numeric input.
 -- @about
 --   Per-track notes system for REAPER.
 --
@@ -107,29 +105,29 @@ local function end_theme(color_count)
     reaper.ImGui_PopStyleVar(ctx, to_pop)
 end
 
--- Global variables
+-- Global state
 local noteText = ''
 local currentTrack = nil
 local statusMsg = '✅ System ready'
 local lastTrackGUID = nil
-local showHelpModal = false  -- Add this variable to control help modal visibility
+local showHelpModal = false  -- Controls help modal visibility
 local isDirty = false
-local jsfxFontScale = 1.30 -- default font scale for JSFX
-local jsfxForceLarge = false -- optional: keep larger font even in compact MCP
+local jsfxFontScale = 1.30   -- Default JSFX font scale
+local jsfxForceLarge = false -- Optional: keep larger font even in compact MCP
 local showConfirmClear = false
 local notesCache = nil
 local notesCachePath = nil
-local lastProjectPath = nil -- For detecting project save (unsaved -> saved)
-local lastProjectPtr = nil -- For detecting project tab switch vs save
+local lastProjectPath = nil -- Tracks project save / Save As transitions
+local lastProjectPtr = nil  -- Tracks project tab switches
 
--- Console Debug Helper
+-- Console debug helper
 local function log(msg)
   -- if reaper then
   --   reaper.ShowConsoleMsg("[FloopScratchpad] " .. tostring(msg) .. "\n")
   -- end
 end
 
--- Compat wrapper per slider float (gestisce diverse versioni di ReaImGui)
+-- Compatibility wrapper for slider-like float controls across ReaImGui versions
 local function SliderFloatCompat(label, value, min, max)
   min = min or 0.0
   max = max or 1.0
@@ -164,7 +162,7 @@ local function getResourcePath()
   return path
 end
 
--- Forward declarations so loaders see locals (Lua scoping)
+-- Forward declarations for Lua scoping
 local ensureDirectoryExists, readFile, writeFile, getProjectTrackGUIDSet, filterNotesByGUIDSet, isDirWritable
 
 -- joinPath used for cross-platform path joining
@@ -207,7 +205,7 @@ local function getNotesFilePath()
   local candidate = joinPath(projectPath, projectName .. "_notes.txt")
   local writable = select(1, isDirWritable(candidate))
   if writable then
-    -- log("Path candidate selected: " .. candidate)
+    
     return candidate
   else
     local fallbackDir = joinPath(getResourcePath(), "FloopNotes")
@@ -299,10 +297,10 @@ local function loadNotesFromFile()
     return content
   end
   
-  -- Check if we need to migrate notes from unsaved location
+  -- Check whether notes must be migrated from the unsaved location
   local projectPath = reaper.GetProjectPath("")
   if projectPath ~= "" then
-    -- Project is saved, try to migrate from unsaved location
+    -- Project is saved: migrate notes from the unsaved location if present
     local docs = joinPath(getSystemHome(), "Documents")
     local reaperMedia = joinPath(docs, "REAPER Media")
     local unsavedPath = joinPath(reaperMedia, "unsaved_project_notes.txt")
@@ -310,8 +308,7 @@ local function loadNotesFromFile()
     
     if unsavedContent and unsavedContent:match("%S") then
       log("Migrating notes from unsaved location: " .. unsavedPath .. " to " .. filePath)
-      -- Do NOT filter notes; keep all notes from unsaved project to ensure migration
-      -- Migrate notes to project location
+      -- Preserve all notes from the unsaved project and migrate them to the project location
       local success, err = writeFile(filePath, unsavedContent)
       if success then
         log("Migration successful.")
@@ -328,14 +325,13 @@ local function loadNotesFromFile()
       end
     end
     
-    -- Legacy fallback: older versions saved to Desktop on first save
+    -- Legacy fallback: older versions saved unsaved notes to Desktop on first save
     local desktop = joinPath(getSystemHome(), "Desktop")
     local legacyPath = joinPath(desktop, "unsaved_project_notes.txt")
     local legacyContent = readFile(legacyPath)
     if legacyContent and legacyContent:match("%S") then
       log("Migrating legacy notes from: " .. legacyPath)
-      -- Do NOT filter notes; keep all notes from unsaved project to ensure migration
-      -- Migrate legacy notes to project location
+      -- Preserve all legacy notes and migrate them to the project location
       local success, err = writeFile(filePath, legacyContent)
       if success then
         log("Legacy migration successful.")
@@ -350,8 +346,7 @@ local function loadNotesFromFile()
       end
     end
     
-    -- Ensure project notes file exists even if no content to migrate
-    -- But only if it doesn't exist yet
+    -- Ensure project notes file exists, even if there is nothing to migrate
     if not content then
       log("No existing notes found. Creating empty file at: " .. filePath)
       writeFile(filePath, "")
@@ -363,7 +358,7 @@ local function loadNotesFromFile()
     notesCachePath = filePath
     return content or ""
   else
-    -- Project not saved yet, use fallback locations
+    -- Project not saved yet: use fallback locations
     local docs = joinPath(getSystemHome(), "Documents")
     local reaperMedia = joinPath(docs, "REAPER Media")
     local fallbackPath = joinPath(reaperMedia, "unsaved_project_notes.txt")
@@ -375,7 +370,7 @@ local function loadNotesFromFile()
       return fallbackContent
     end
     
-    -- Legacy fallback: older versions saved to Desktop on first save
+    -- Legacy fallback: older versions stored unsaved notes on Desktop
     local desktop = joinPath(getSystemHome(), "Desktop")
     local legacyPath = joinPath(desktop, "unsaved_project_notes.txt")
     local legacyContent = readFile(legacyPath)
@@ -452,7 +447,7 @@ local function getSelectedTrack()
   end
 end
 
--- Functions noteText
+-- Note helpers
 local function getNoteForTrack(trackGUID)
   if not trackGUID then return "" end
   local allNotes = loadNotesFromFile() or ""
@@ -470,14 +465,10 @@ local function getNoteForTrack(trackGUID)
         local contentPos = block:find("Content:")
         if contentPos then
           local content = block:sub(contentPos + #("Content:"))
-          -- Trim leading whitespace if needed, but preserve structure
-          -- Usually our save format puts a space after Content:
-          -- If we just gsub leading spaces, we might lose intentional indentation if user added it?
-          -- But for JSFX display we generally want clean start.
           content = content:gsub("^%s*", "")
           return content
         end
-        return "" -- Found GUID but no content marker
+        return ""
       end
     end
   end
@@ -588,7 +579,7 @@ gfx_x = pad; gfx_y = pad;
 
 // Dynamic font size based on width/height
   base_sz = (compact ? 14 : 18) * font_scale;
-  sz = min(max(base_sz, 12), 28);
+  sz = min(max(base_sz, 12), 40);
 // Scale down if too narrow (less aggressive)
   force_big ? (
     sz = sz;
@@ -679,8 +670,7 @@ local function addJSFXToTrack(track, fontScale, forceLarge)
   end
 end
 
--- Update (delete + re-add) JSFX readers for a given track
--- Refresh (delete + conditional re-add) the JSFX reader for a given track
+-- Refresh JSFX note reader for a single track (delete + conditional re-add)
 -- Note: To keep the UI embedded after re-adds, configure
 -- "Default settings for new instance" to include TCP/MCP embedding in the FX Browser.
 local function refreshJSFXForTrack(track)
@@ -695,9 +685,7 @@ local function refreshJSFXForTrack(track)
       wasPresent = true
     end
   end
-  -- Only re-add if the track actually has non-empty notes OR if it was already there
-  -- This ensures that if a user is adjusting the slider on a track with a placeholder (empty note),
-  -- the JSFX updates instead of disappearing.
+  -- Re-add only when the track has notes or previously had the JSFX
   local trackGUID = getTrackGUID(track)
   local noteContent = getNoteForTrack(trackGUID)
   if (noteContent and noteContent:match('%S')) or wasPresent then
@@ -705,7 +693,7 @@ local function refreshJSFXForTrack(track)
   end
 end
 
--- Refresh all tracks' JSFX readers
+-- Refresh JSFX note readers on all tracks
 local function refreshAllJSFXReaders()
   local total = reaper.CountTracks(0)
   for t = 0, total - 1 do
@@ -798,17 +786,19 @@ local function renderUI()
   
   reaper.ImGui_Spacing(ctx)
   
-  --Characters count
+  -- Character count
   reaper.ImGui_Text(ctx, "📊 Text Length: " .. #noteText .. " characters")
   reaper.ImGui_Separator(ctx)
   reaper.ImGui_Spacing(ctx)
   
-  -- JSFX font scale control
-  reaper.ImGui_Text(ctx, '🔡 JSFX font scale')
-  reaper.ImGui_SameLine(ctx)
-  reaper.ImGui_TextDisabled(ctx, string.format("(%.2f)", jsfxFontScale))
+  local baseAbsSize = 18
+  local currentAbsSize = math.floor(jsfxFontScale * baseAbsSize + 0.5)
   
-  local scaleChanged, newScale = SliderFloatCompat('##jsfx_font_scale', jsfxFontScale, 0.8, 2.0)
+  reaper.ImGui_Text(ctx, '🔡 JSFX font')
+  reaper.ImGui_SameLine(ctx)
+  reaper.ImGui_TextDisabled(ctx, string.format("%d px", currentAbsSize))
+  
+  local scaleChanged, newScale = SliderFloatCompat('##jsfx_font_scale', jsfxFontScale, 0.8, 2.25)
   if scaleChanged then
     jsfxFontScale = newScale
     isDirty = true
@@ -824,6 +814,37 @@ local function renderUI()
       if saved then
         refreshJSFXForTrack(currentTrack)
         statusMsg = '✅ Font scale updated'
+        isDirty = false
+      else
+        statusMsg = '❌ Autosave failed: ' .. (err or "unknown")
+      end
+    end
+  end
+  
+  local absChanged = false
+  reaper.ImGui_SameLine(ctx)
+  if reaper.ImGui_SetNextItemWidth then
+    reaper.ImGui_SetNextItemWidth(ctx, 60)
+  end
+  local ch, str = reaper.ImGui_InputText(ctx, '##jsfx_font_abs', tostring(currentAbsSize))
+  absChanged = ch
+  if absChanged then
+    local parsed = tonumber(str)
+    if parsed then
+      local newAbs = math.floor(parsed + 0.5)
+      if newAbs < 14 then newAbs = 14 end
+      if newAbs > 40 then newAbs = 40 end
+      jsfxFontScale = newAbs / baseAbsSize
+      isDirty = true
+    end
+  end
+  if reaper.ImGui_IsItemDeactivatedAfterEdit and reaper.ImGui_IsItemDeactivatedAfterEdit(ctx) then
+    if currentTrack and isValidTrack(currentTrack) then
+      local trackGUID = getTrackGUID(currentTrack)
+      local saved, err = saveNoteForTrack(trackGUID, noteText)
+      if saved then
+        refreshJSFXForTrack(currentTrack)
+        statusMsg = '✅ Font size updated'
         isDirty = false
       else
         statusMsg = '❌ Autosave failed: ' .. (err or "unknown")
@@ -949,7 +970,7 @@ local function renderUI()
       reaper.ImGui_Text(ctx, '💾 Saving & JSFX:')
       reaper.ImGui_BulletText(ctx, '💾 Save: Manually saves notes to the file')
       reaper.ImGui_BulletText(ctx, '🎨 Add JSFX: Adds a visual note reader to the track TCP')
-      reaper.ImGui_BulletText(ctx, '🔡 Font Scale: Adjust text size (value shown). Updates on release.')
+      reaper.ImGui_BulletText(ctx, '🔡 Font Size: Use slider or numeric input (14–40 px). Updates on release.')
       reaper.ImGui_BulletText(ctx, '🔁 Autosave: Notes are saved automatically when switching tracks or tabs')
       reaper.ImGui_BulletText(ctx, '🗓 Startup: Notes restore automatically. SWS extension enables auto-refresh.')
       reaper.ImGui_BulletText(ctx, '🗑️ Clear: Deletes all notes for the current project (creates backup)')
@@ -967,8 +988,8 @@ local function renderUI()
       reaper.ImGui_Text(ctx, '💡 Tips:')
       reaper.ImGui_BulletText(ctx, 'Keep notes concise for better JSFX display')
       reaper.ImGui_BulletText(ctx, 'Use the JSFX for quick reference while mixing')
-      reaper.ImGui_BulletText(ctx, 'Notes and font scale persist across REAPER sessions')
-      reaper.ImGui_BulletText(ctx, 'Each track has its own note and font scale')
+      reaper.ImGui_BulletText(ctx, 'Notes and font settings persist across REAPER sessions')
+      reaper.ImGui_BulletText(ctx, 'Each track has its own note and font settings')
       
       reaper.ImGui_Spacing(ctx)
       reaper.ImGui_Separator(ctx)

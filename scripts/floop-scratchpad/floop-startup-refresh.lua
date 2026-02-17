@@ -1,18 +1,16 @@
 -- @description Floop Startup Refresh
--- @version 1.2.3
+-- @version 1.2.4
 -- @author Floop-s
--- @date 06-01-2026
+-- @date 17-02-2026
 -- @noindex
 
 
--- Purpose: Project startup helper to refresh JSFX note readers per track
--- It reads the project notes file, re-writes the single JSFX file with the
--- track-specific text, removes any existing instances, and re-adds the JSFX
--- to tracks that have non-empty notes. This avoids multiplying JSFX files.
+-- Purpose: Refresh per-track JSFX note readers on project load.
+-- Reads the notes file, rewrites the shared JSFX, and re-inserts it only on tracks with non-empty notes.
 
 local reaper = reaper
 
--- Helper functions defined first to avoid scope issues
+-- Helper functions to avoid scope issues
 
 local function joinPath(...)
   local parts = {...}
@@ -114,7 +112,7 @@ local function getNoteForGUID(allNotes, guid)
   return ""
 end
 
--- read FontScale for GUID (fallback to 1.30)
+-- Read stored FontScale for a GUID, fallback to 1.30
 local function getFontScaleForGUID(allNotes, guid)
   if not allNotes or allNotes == "" or not guid then return 1.30 end
   
@@ -141,7 +139,7 @@ local function createJSFXFile(noteContent, fontScale)
   local effectsDir = joinPath(resourcePath, 'Effects')
   local jsfxPath = joinPath(effectsDir, 'FloopNoteReader.jsfx')
   reaper.RecursiveCreateDirectory(effectsDir, 0)
-  -- simple JSFX that displays a note string
+
   local safe = (noteContent or ""):gsub('"','\\"'):gsub('\n','\\n')
   if #safe > 200 then safe = safe:sub(1,200) .. "..." end
   local scale = tonumber(fontScale) or 1.30
@@ -158,7 +156,7 @@ pad = 6;
 area_w = max(10, gfx_w - pad*2);
 compact = (gfx_w < 260) || (gfx_h < 90);
 base_sz = (compact ? 14 : 18) * font_scale;
-sz = min(max(base_sz, 12), 28);
+sz = min(max(base_sz, 12), 40);
 while (sz > 10 && area_w < (sz*3)) (
   sz -= 1;
 );
@@ -205,24 +203,23 @@ local function addJSFXToTrack(track)
   return false
 end
 
--- Utility to read notes with fallback and migration for first-save scenario
+-- Load notes with fallback and migration handling
 local function readNotesWithFallback()
   local primary = getNotesFilePath()
   local c = readFile(primary)
   if c and c:match("%S") then return c end
   
-  -- Check if we need to migrate notes from unsaved location
+  -- Check whether notes must be migrated from the unsaved location
   local projectPath = reaper.GetProjectPath("")
   if projectPath ~= "" then
-    -- Project is saved, try to migrate from unsaved location
+    -- Project is saved: migrate notes from the unsaved location if present
     local docs = joinPath(getSystemHome(), "Documents")
     local reaperMedia = joinPath(docs, "REAPER Media")
     local unsavedPath = joinPath(reaperMedia, "unsaved_project_notes.txt")
     local unsavedContent = readFile(unsavedPath)
     
     if unsavedContent and unsavedContent:match("%S") then
-      -- Do NOT filter notes; keep all notes from unsaved project to ensure migration
-      -- Migrate notes to project location
+      -- Preserve all notes from the unsaved project and migrate them to the project location
       local file = io.open(primary, "w")
       if file then
         file:write(unsavedContent)
@@ -242,8 +239,7 @@ local function readNotesWithFallback()
     local legacyPath = joinPath(desktop, "unsaved_project_notes.txt")
     local legacyContent = readFile(legacyPath)
     if legacyContent and legacyContent:match("%S") then
-      -- Do NOT filter notes; keep all notes from unsaved project to ensure migration
-      -- Migrate legacy notes to project location
+      -- Preserve all legacy notes and migrate them to the project location
       local file = io.open(primary, "w")
       if file then
         file:write(legacyContent)
@@ -258,8 +254,7 @@ local function readNotesWithFallback()
       end
     end
     
-    -- Ensure project notes file exists even if no content to migrate
-    -- But only if it doesn't exist yet
+    -- Ensure project notes file exists, even if there is nothing to migrate
     if not c then
       local f = io.open(primary, "w")
       if f then f:write(""); f:close() end
@@ -267,14 +262,14 @@ local function readNotesWithFallback()
     end
     return c or ""
   else
-    -- Project not saved yet, use fallback locations
+    -- Project not saved yet: use fallback locations
     local docs = joinPath(getSystemHome(), "Documents")
     local reaperMedia = joinPath(docs, "REAPER Media")
     local fallback = joinPath(reaperMedia, "unsaved_project_notes.txt")
     local fc = readFile(fallback)
     if fc and fc:match("%S") then return fc end
     
-    -- Legacy fallback: older versions saved to Desktop on first save
+    -- Legacy fallback: older versions saved unsaved notes to Desktop on first save
     local desktop = joinPath(getSystemHome(), "Desktop")
     local legacy = joinPath(desktop, "unsaved_project_notes.txt")
     local lc = readFile(legacy)
@@ -285,7 +280,7 @@ local function readNotesWithFallback()
   return ""
 end
 
--- Main refresh across tracks
+-- Refresh JSFX note readers across all tracks
 local function refreshAll()
   local notes = readNotesWithFallback()
   local total = reaper.CountTracks(0)
