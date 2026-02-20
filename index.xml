@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Floop's Reaper Scripts" commit="f654ec84ac03c749df31b808f616876351c577a4">
+<index version="1" name="Floop's Reaper Scripts" commit="b7f4b93c1f1d3b3611a52136d3a4650721d36316">
   <category name="effects/floop-chrominator">
     <reapack name="floop-chrominator.jsfx" type="effect" desc="Floop Chrominator (Stereo Analog Saturator)">
       <metadata>
@@ -115,6 +115,11 @@
 - Added segment gain handles with live update when Live Edit is enabled.
 - Hardened analysis and preview via median clamp on extreme sibilant material.]]></changelog>
         <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/6d24fe5693b76b464825519c0199eba48585c8da/scripts/floop-ess-hunter/floop-ess-hunter.lua</source>
+      </version>
+      <version name="1.1.2" author="Floop-s" time="2026-02-20T06:38:48Z">
+        <changelog><![CDATA[- Fixed cumulative volume reduction when sibilant segments overlap.
+- Fixed incorrect envelope point values by respecting track envelope scaling mode (Fader/Amplitude).]]></changelog>
+        <source main="main">https://github.com/floop-s/floops-reaper-scripts/raw/b7f4b93c1f1d3b3611a52136d3a4650721d36316/scripts/floop-ess-hunter/floop-ess-hunter.lua</source>
       </version>
     </reapack>
   </category>
