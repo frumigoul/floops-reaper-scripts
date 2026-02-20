@@ -1,12 +1,11 @@
 -- Floop Ess Hunter: taming hiss in a single pass.
 -- @description Floop Ess Hunter: tame hiss and sibilance with envelopes.
--- @version 1.1.1
+-- @version 1.1.2
 -- @author Floop-s
 -- @license GPL-3.0
 -- @changelog
---   - Improved envelope visibility and stability when applying from preview.
---   - Added segment gain handles with live update when Live Edit is enabled.
---   - Hardened analysis and preview via median clamp on extreme sibilant material.
+--   - Fixed cumulative volume reduction when sibilant segments overlap.
+--   - Fixed incorrect envelope point values by respecting track envelope scaling mode (Fader/Amplitude).
 -- @about
 --   Floop Ess Hunter
 --   Taming hiss.
@@ -975,15 +974,52 @@ local function insert_reduction_points(env, t_start, t_end, factor, pre_ms, post
   
   local v_pre = select(2, reaper.Envelope_Evaluate(env, max(0, t1 - 1e-3), 0, 0))
   local v_post = select(2, reaper.Envelope_Evaluate(env, t4 + 1e-3, 0, 0))
-  -- Overwrite: remove points in range to prevent accumulation
+
+  --  envelope scaling 
+  local mode = reaper.GetEnvelopeScalingMode(env)
+  local v_pre_lin = reaper.ScaleFromEnvelopeMode(mode, v_pre)
+  local v_post_lin = reaper.ScaleFromEnvelopeMode(mode, v_post)
+  local v_t2 = reaper.ScaleToEnvelopeMode(mode, v_pre_lin * factor)
+  local v_t3 = reaper.ScaleToEnvelopeMode(mode, v_post_lin * factor)
+
+  -- remove points in range 
   if overwrite then
     reaper.DeleteEnvelopePointRange(env, t1, t4)
   end
-  -- Envelope: insert points based on baseline
+  -- insert points based on baseline
   reaper.InsertEnvelopePointEx(env, -1, t1, v_pre, shape, 0, false, true)
-  reaper.InsertEnvelopePointEx(env, -1, t2, v_pre * factor, shape, 0, false, true)
-  reaper.InsertEnvelopePointEx(env, -1, t3, v_post * factor, shape, 0, false, true)
+  reaper.InsertEnvelopePointEx(env, -1, t2, v_t2, shape, 0, false, true)
+  reaper.InsertEnvelopePointEx(env, -1, t3, v_t3, shape, 0, false, true)
   reaper.InsertEnvelopePointEx(env, -1, t4, v_post, shape, 0, false, true)
+end
+
+local function coalesce_segments(segments, pre_ms, post_ms, default_db)
+  if #segments == 0 then return {} end
+  local merged = {}
+  -- Sort by start time 
+  table.sort(segments, function(a,b) return a[1] < b[1] end)
+  
+  local cur = { segments[1][1], segments[1][2], segments[1][3] or default_db }
+  local pre = max(0, pre_ms/1000)
+  local post = max(0, post_ms/1000)
+  
+  for i = 2, #segments do
+    local next_s = segments[i]
+    local next_db = next_s[3] or default_db
+    
+    -- Check overlap including ramps
+    if (cur[2] + post) >= (next_s[1] - pre) then
+      
+      cur[2] = max(cur[2], next_s[2])
+     
+      cur[3] = max(cur[3], next_db)
+    else
+      merged[#merged+1] = cur
+      cur = { next_s[1], next_s[2], next_db }
+    end
+  end
+  merged[#merged+1] = cur
+  return merged
 end
 
 local function features_for_window(buf, ch, bank)
@@ -1061,7 +1097,7 @@ local function median(tbl)
   else
     local k1 = floor(n / 2)
     local v1 = quickselect(a, 1, n, k1)
-    -- For the upper median, run quickselect on a fresh copy to avoid bias
+    -- run quickselect to avoid bias
     local b = {}
     for i = 1, n do b[i] = tbl[i] end
     local v2 = quickselect(b, 1, n, k1 + 1)
@@ -1174,11 +1210,14 @@ local function analyze_item_and_reduce(item, cfg)
   if inS then local seg_end = t1; if (seg_end - seg_start)*1000 >= cfg.min_seg_ms then table.insert(segments, {seg_start, seg_end}) end end
 
   reaper.PreventUIRefresh(1)
-  for _, seg in ipairs(segments) do
-    insert_reduction_points(env, seg[1], seg[2], factor, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.overwrite, ep_pos, ep_offs, ep_rate, is_take_env)
+  local merged_segments = coalesce_segments(segments, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.reduction_db)
+  for _, seg in ipairs(merged_segments) do
+    local seg_factor = factor
+    if seg[3] then seg_factor = db_to_amp(-seg[3]) end
+    insert_reduction_points(env, seg[1], seg[2], seg_factor, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.overwrite, ep_pos, ep_offs, ep_rate, is_take_env)
   end
-  -- Save new segments for possible future cleanup
-  save_segments(track, item, segments, cfg.pre_ramp_ms, cfg.post_ramp_ms)
+  -- Save merged segments for possible future cleanup
+  save_segments(track, item, merged_segments, cfg.pre_ramp_ms, cfg.post_ramp_ms)
 
   reaper.Envelope_SortPoints(env)
   reaper.PreventUIRefresh(-1)
@@ -1484,15 +1523,16 @@ local function apply_cached_segments(cfg)
   local factor = db_to_amp(-cfg.reduction_db)
   reaper.Undo_BeginBlock()
   reaper.PreventUIRefresh(1)
-  for i=1,#analysis_cache.segments do
-    local s = analysis_cache.segments[i]
+  local merged_segments = coalesce_segments(analysis_cache.segments, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.reduction_db)
+  for i=1,#merged_segments do
+    local s = merged_segments[i]
     local seg_factor = factor
     if s[3] then
       seg_factor = db_to_amp(-s[3])
     end
     insert_reduction_points(env, s[1], s[2], seg_factor, cfg.pre_ramp_ms, cfg.post_ramp_ms, cfg.overwrite, ep_pos, ep_offs, ep_rate, is_take_env)
   end
-  save_segments(track, item, analysis_cache.segments, cfg.pre_ramp_ms, cfg.post_ramp_ms)
+  save_segments(track, item, merged_segments, cfg.pre_ramp_ms, cfg.post_ramp_ms)
   reaper.Envelope_SortPoints(env)
   reaper.PreventUIRefresh(-1)
   reaper.Undo_EndBlock('Floop Ess Hunter: apply segments from preview', -1)

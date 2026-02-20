@@ -117,6 +117,10 @@ The easiest way to install and keep the script updated is via **ReaPack**.
 
 ## Changelog
 
+### v1.1.2 (2026-02-20)
+*   **Fix**: Fixed cumulative volume reduction when sibilant segments overlap.
+*   **Fix**: Fixed incorrect envelope point values by respecting track envelope scaling mode (Fader/Amplitude).
+
 ### v1.1.1 (2026-02-15)
 *   **Stability**: Improved envelope visibility when applying from preview and during Live Edit.
 *   **Control**: Segment gain handles now support live update when Live Edit is enabled.
