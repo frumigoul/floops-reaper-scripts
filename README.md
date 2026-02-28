@@ -1,3 +1,7 @@
+My attempt at modifying [Floop's script](https://github.com/floop-s/floops-reaper-scripts/releases/tag/floop-sheet-reader-v2.1.0) in order to have it working under Linux
+
+All thanks and congrats to Floops the author!!
+
 # Floop’s REAPER Scripts
 
 This repository contains a collection of **JSFX effects** and **Lua scripts** for
